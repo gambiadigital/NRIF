@@ -1,26 +1,216 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/*
+ * Run for Independence — design tokens.
+ * Colours come from the two marks: the Run4Independence logo (navy wordmark, flag red, blue, green)
+ * and the NRIF tree (forest green #135F40, indigo #2A3181, coral #D34E3F). Sun gold is the storyboard's
+ * Sign up colour. The ground is a warm paper, never pure white, so white cards lift off it.
+ */
+@theme {
+  --color-navy: #0b1b3a;
+  --color-navy-800: #13264b;
+  --color-navy-700: #1d335f;
+  --color-navy-600: #2b4475;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --color-paper: #f6f4ef;
+  --color-sand: #eeeae1;
+  --color-line: #e2ddd2;
+  --color-line-strong: #cfc8b9;
+  --color-muted: #5d6577;
+  --color-faint: #8b91a0;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  --color-forest: #135f40;
+  --color-forest-700: #0e4a31;
+  --color-forest-600: #11553a;
+  --color-forest-400: #2e8a62;
+  --color-forest-100: #d7ebe0;
+  --color-forest-50: #ebf5ef;
+
+  --color-ember: #d7141a;
+  --color-ember-600: #b81116;
+  --color-ember-100: #fbdcdc;
+  --color-ember-50: #fdeeee;
+
+  --color-coral: #d34e3f;
+
+  --color-cobalt: #2a3181;
+  --color-cobalt-600: #232a6e;
+  --color-cobalt-400: #4b54b0;
+  --color-cobalt-100: #dfe1f5;
+  --color-cobalt-50: #eff0fa;
+
+  --color-royal: #1f3c99;
+
+  --color-sun: #f2b233;
+  --color-sun-600: #dc9a17;
+  --color-sun-100: #fcebc4;
+  --color-sun-50: #fdf6e3;
+
+  --font-sans: var(--font-flex), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-code), ui-monospace, monospace;
+
+  --radius-card: 1.25rem;
+  --radius-xl2: 1.75rem;
+
+  --shadow-card: 0 1px 0 rgb(11 27 58 / 0.04), 0 1px 2px rgb(11 27 58 / 0.06), 0 8px 24px -12px rgb(11 27 58 / 0.12);
+  --shadow-lift: 0 2px 4px rgb(11 27 58 / 0.05), 0 24px 48px -20px rgb(11 27 58 / 0.28);
+  --shadow-pop: 0 30px 80px -24px rgb(11 27 58 / 0.45);
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --animate-marquee: marquee 38s linear infinite;
+  --animate-marquee-fast: marquee 22s linear infinite;
+  --animate-shine: shine 2.4s var(--ease-out-expo) infinite;
+  --animate-pulse-ring: pulse-ring 2s var(--ease-out-expo) infinite;
+
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+  @keyframes shine {
+    from { transform: translateX(-120%) skewX(-18deg); }
+    to { transform: translateX(220%) skewX(-18deg); }
+  }
+  @keyframes expand {
+    from { height: 0; opacity: 0; }
+    to { height: var(--radix-accordion-content-height); opacity: 1; }
+  }
+  @keyframes collapse {
+    from { height: var(--radix-accordion-content-height); opacity: 1; }
+    to { height: 0; opacity: 0; }
+  }
+  @keyframes pulse-ring {
+    0% { box-shadow: 0 0 0 0 rgb(242 178 51 / 0.55); }
+    100% { box-shadow: 0 0 0 14px rgb(242 178 51 / 0); }
   }
 }
 
+:root {
+  color-scheme: light;
+  --header-h: 4.25rem;
+}
+
+html {
+  background: var(--color-paper);
+  -webkit-tap-highlight-color: transparent;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-paper);
+  color: var(--color-navy);
+  font-family: var(--font-sans);
+  font-optical-sizing: auto;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--color-sun);
+  color: var(--color-navy);
+}
+
+/* The race voice: Archivo, narrowed and leaning forward like the logo's wordmark. */
+@utility font-race {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 900;
+  font-variation-settings: "wdth" 68;
+  text-transform: uppercase;
+  letter-spacing: -0.015em;
+  line-height: 0.86;
+}
+
+/* Bib numerals: upright, narrow, black. */
+@utility font-bib {
+  font-family: var(--font-display);
+  font-style: normal;
+  font-weight: 900;
+  font-variation-settings: "wdth" 62;
+  letter-spacing: -0.03em;
+  line-height: 0.82;
+  font-feature-settings: "tnum" 1;
+}
+
+@utility font-label {
+  font-family: var(--font-sans);
+  font-weight: 650;
+  font-size: 0.6875rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* The flag rule: red, blue, green with the white fimbriation, as on the logo's underline. */
+@utility flag-rule {
+  background: linear-gradient(
+    90deg,
+    var(--color-ember) 0 31%,
+    transparent 31% 34.5%,
+    var(--color-royal) 34.5% 65.5%,
+    transparent 65.5% 69%,
+    var(--color-forest) 69% 100%
+  );
+}
+
+@utility grain {
+  position: relative;
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.07;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+}
+
+/* Lenis */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+/* Focus that reads on paper and on navy. */
+:where(a, button, input, textarea, [role="button"], [role="radio"], [role="checkbox"], [role="tab"], [role="option"]):focus-visible {
+  outline: 2.5px solid var(--color-sun);
+  outline-offset: 2px;
+  border-radius: 0.75rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: white;
+  }
 }
