@@ -24,7 +24,8 @@ npm run dev
 | `ADMIN_SETUP_TOKEN` | One-time code for creating the first admin at `/admin/login` |
 | `CRON_SECRET` | Vercel sends it to `/api/cron/daily`; anything else is refused |
 | `WAVE_PAYMENT_LINK` | NRIF's Wave merchant payment link |
-| `NEXT_PUBLIC_SITE_URL` | The public address, used in text-message links |
+| `NEXT_PUBLIC_SITE_URL` | The public address, used in text-message links and as the origin for Neon Auth |
+| `NEON_AUTH_BASE_URL` | Neon Auth (Managed Better Auth) URL for the branch; sends and checks the email sign-in codes |
 | `WAVE_API_KEY`, `WAVE_WEBHOOK_SECRET` | Optional. Wave Checkout API: makes Wave instant and confirms bookings automatically |
 | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM` | Optional. Sends the texts |
 | `RESEND_API_KEY`, `EMAIL_FROM` | Optional. Sends the emails |
@@ -52,12 +53,18 @@ When Wave Checkout API keys arrive, set `WAVE_API_KEY` and `WAVE_WEBHOOK_SECRET`
 **Daily job.** `/api/cron/daily` (scheduled in `vercel.json`) releases unpaid places after five days, sends the day-3
 reminder, the race-week texts on 23 and 29 January, and pushes the outbox.
 
-**Participants.** My entry signs in with the booking reference and the phone number used to book. It shows bibs, the
+**Signing in.** People sign in with a six-digit code emailed by Neon Auth (enabled on the `production` branch, with
+`https://nrif.vercel.app` as a trusted domain and localhost access off). Codes go only to addresses that have a booking
+(My entry) or an admin account, at most five an hour per address. Neon only proves the address; the session after it is
+our own signed cookie. Codes come from Neon's shared sender (`auth@mail.myneon.app`); for launch, give Neon NRIF's own
+SMTP account in **Settings → Better Auth** so codes come from NRIF and are not rate-limited.
+
+**Participants.** My entry signs in with an email code, or with the booking reference and phone number as a fallback. It shows bibs, the
 race-pack QR code, kit changes (until 9 January), place transfers, steps logging and, for virtual runners, uploading a
 run and the e-certificate once staff approve it.
 
-**Admin.** `/admin`, behind its own sign-in. The first account is created at `/admin/login` with the setup code;
-further accounts are added in **Settings**, along with contact details, social links, payment numbers, the fund goal and
+**Admin.** `/admin`, behind its own sign-in by email code. The first account is created at `/admin/login` with the
+setup code and a code sent to its email; further accounts are added by email in **Settings**, along with contact details, social links, payment numbers, the fund goal and
 team codes. **Events and bibs** sets fees, start times and bib ranges.
 
 ## Code map

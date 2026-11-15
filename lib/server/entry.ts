@@ -10,8 +10,9 @@ export const VIRTUAL_OPEN = new Date("2027-01-23T00:00:00Z");
 export const VIRTUAL_CLOSE = new Date("2027-02-03T00:00:00Z");
 const ENTRY_DAYS = 30;
 
-export async function startEntrySession(bookingId: string) {
-  const value = await seal({ kind: "entry", sub: bookingId, exp: Date.now() + ENTRY_DAYS * 86400_000 });
+/** `email` is set when the person proved the address with a code, which lets them switch between its bookings. */
+export async function startEntrySession(bookingId: string, email?: string) {
+  const value = await seal({ kind: "entry", sub: bookingId, exp: Date.now() + ENTRY_DAYS * 86400_000, ...(email ? { email } : {}) });
   (await cookies()).set(ENTRY_COOKIE, value, cookieOptions(ENTRY_DAYS * 86400));
 }
 

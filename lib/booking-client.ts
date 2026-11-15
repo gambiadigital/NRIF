@@ -44,6 +44,8 @@ export type ClientBooking = {
   stepsSupporters?: number;
   transfers?: { participant_id: string; new_name: string; status: string }[];
   kitLocked?: boolean;
+  others?: { reference: string; status: string; created_at: string }[];
+  signedInEmail?: string | null;
 };
 
 /** Loads a booking by reference + key, or by the My entry cookie when those are absent. Optionally polls. */

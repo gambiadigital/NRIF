@@ -8,12 +8,13 @@ import { AnimatePresence, motion } from "motion/react";
 import { Tabs } from "radix-ui";
 import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
-import { ArrowRight, LockSimple, ArrowsLeftRight, PencilSimple, Footprints, Package, MapPin, CheckCircle, ShareNetwork, UserSwitch, SignOut, HourglassMedium, Plus } from "@phosphor-icons/react";
+import { ArrowRight, EnvelopeSimple, LockSimple, ArrowsLeftRight, PencilSimple, Footprints, Package, MapPin, CheckCircle, ShareNetwork, UserSwitch, SignOut, HourglassMedium, Plus } from "@phosphor-icons/react";
 import { SiteHeader } from "@/components/site/Header";
 import { Bib } from "@/components/Bib";
 import { Countdown } from "@/components/Countdown";
 import { Button } from "@/components/ui/button";
 import { ChipGroup, CheckMark, TextInput, PhoneField, Field } from "@/components/ui/fields";
+import { CodeInput } from "@/components/ui/CodeInput";
 import { Sheet } from "@/components/ui/sheet";
 import { RUN, SHIRT_SIZES, TIMELINE, eventById } from "@/lib/data";
 import { money } from "@/lib/format";
@@ -44,6 +45,10 @@ function MyEntry() {
 }
 
 function SignIn({ onDone }: { onDone: () => void }) {
+  const [mode, setMode] = useState<"email" | "reference">("email");
+  const [email, setEmail] = useState("");
+  const [sent, setSent] = useState(false);
+  const [code, setCode] = useState("");
   const [reference, setReference] = useState("");
   const [phone, setPhone] = useState({ iso: "GM", digits: "" });
   const [busy, setBusy] = useState(false);
@@ -55,18 +60,34 @@ function SignIn({ onDone }: { onDone: () => void }) {
     return () => clearTimeout(t);
   }, []);
 
-  async function submit() {
+  async function run(fn: () => Promise<unknown>) {
     setBusy(true);
     setErr(null);
     try {
-      await api("/api/entry/login", { json: { reference, digits: phone.digits } });
-      onDone();
+      await fn();
     } catch (e) {
       setErr((e as Error).message);
     } finally {
       setBusy(false);
     }
   }
+
+  const sendCode = () =>
+    run(async () => {
+      await api("/api/entry/code", { json: { email } });
+      setSent(true);
+      setCode("");
+    });
+  const verify = (c: string) =>
+    run(async () => {
+      await api("/api/entry/verify", { json: { email, code: c } });
+      onDone();
+    });
+  const byReference = () =>
+    run(async () => {
+      await api("/api/entry/login", { json: { reference, digits: phone.digits } });
+      onDone();
+    });
 
   return (
     <div className="grid min-h-[calc(100dvh-var(--header-h))] grid-cols-1 lg:grid-cols-2">
@@ -80,26 +101,100 @@ function SignIn({ onDone }: { onDone: () => void }) {
       </div>
       <div className="flex items-center justify-center px-4 py-16 sm:px-6">
         <div className="w-full max-w-md">
-          <h1 className="font-race text-[3.2rem] text-navy">Find your entry</h1>
-          <p className="mt-2 text-muted">Use the reference from your text or email, and the phone number you booked with.</p>
-          <form
-            className="mt-8 space-y-4"
-            onSubmit={(e) => {
-              e.preventDefault();
-              void submit();
+          <AnimatePresence mode="wait">
+            {mode === "email" && !sent && (
+              <motion.form
+                key="email"
+                initial={{ opacity: 0, x: 16 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -16 }}
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void sendCode();
+                }}
+              >
+                <h1 className="font-race text-[3.2rem] text-navy">Find your entry</h1>
+                <p className="mt-2 text-muted">Enter the email you booked with. We&apos;ll send you a six-digit code; no password needed.</p>
+                <div className="mt-8 space-y-4">
+                  <Field label="Email" htmlFor="email">
+                    <TextInput id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" leading={<EnvelopeSimple className="size-4" />} />
+                  </Field>
+                  {err && <p className="text-sm font-medium text-ember">{err}</p>}
+                  <Button type="submit" size="lg" block arrow disabled={busy || !/^\S+@\S+\.\S+$/.test(email)}>
+                    {busy ? "Sending…" : "Email me a code"}
+                  </Button>
+                </div>
+              </motion.form>
+            )}
+            {mode === "email" && sent && (
+              <motion.div key="code" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }}>
+                <span className="grid size-14 place-items-center rounded-2xl bg-forest-50 text-forest">
+                  <EnvelopeSimple weight="duotone" className="size-7" />
+                </span>
+                <h1 className="mt-6 font-race text-[3.2rem] text-navy">Check your email</h1>
+                <p className="mt-2 text-muted">
+                  If <b className="text-navy">{email}</b> has a booking, a six-digit code is on its way. It works for 5 minutes. Check your spam folder too.
+                </p>
+                <div className="mt-8">
+                  <CodeInput value={code} onChange={setCode} onComplete={(c) => void verify(c)} disabled={busy} />
+                </div>
+                {err && <p className="mt-4 text-sm font-medium text-ember">{err}</p>}
+                <Button size="lg" block className="mt-6" disabled={busy || code.length < 6} onClick={() => void verify(code)}>
+                  {busy ? "Checking…" : "Open my entry"}
+                </Button>
+                <div className="mt-4 flex items-center justify-between text-sm">
+                  <button
+                    onClick={() => {
+                      setSent(false);
+                      setErr(null);
+                    }}
+                    className="py-2 font-semibold text-muted hover:text-navy"
+                  >
+                    Change email
+                  </button>
+                  <button onClick={() => void sendCode()} disabled={busy} className="py-2 font-semibold text-forest hover:underline">
+                    Send a new code
+                  </button>
+                </div>
+              </motion.div>
+            )}
+            {mode === "reference" && (
+              <motion.form
+                key="ref"
+                initial={{ opacity: 0, x: 16 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -16 }}
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void byReference();
+                }}
+              >
+                <h1 className="font-race text-[3.2rem] text-navy">Use your reference</h1>
+                <p className="mt-2 text-muted">The reference from your payment screen, and the phone number you booked with.</p>
+                <div className="mt-8 space-y-4">
+                  <Field label="Booking reference" htmlFor="ref">
+                    <TextInput id="ref" value={reference} onChange={(e) => setReference(e.target.value.toUpperCase())} placeholder="RFI-7Q4K" className="font-mono uppercase tracking-wider" autoComplete="off" />
+                  </Field>
+                  <Field label="Phone number">
+                    <PhoneField value={phone} onChange={setPhone} />
+                  </Field>
+                  {err && <p className="text-sm font-medium text-ember">{err}</p>}
+                  <Button type="submit" size="lg" block arrow disabled={busy || reference.length < 4 || phone.digits.length < 7}>
+                    {busy ? "Looking…" : "Open my entry"}
+                  </Button>
+                </div>
+              </motion.form>
+            )}
+          </AnimatePresence>
+          <button
+            onClick={() => {
+              setMode(mode === "email" ? "reference" : "email");
+              setErr(null);
             }}
+            className="mt-6 py-2 text-sm font-semibold text-forest hover:underline"
           >
-            <Field label="Booking reference" htmlFor="ref">
-              <TextInput id="ref" value={reference} onChange={(e) => setReference(e.target.value.toUpperCase())} placeholder="RFI-7Q4K" className="font-mono uppercase tracking-wider" autoComplete="off" />
-            </Field>
-            <Field label="Phone number">
-              <PhoneField value={phone} onChange={setPhone} />
-            </Field>
-            {err && <p className="text-sm font-medium text-ember">{err}</p>}
-            <Button type="submit" size="lg" block arrow disabled={busy || reference.length < 4 || phone.digits.length < 7}>
-              {busy ? "Looking…" : "Open my entry"}
-            </Button>
-          </form>
+            {mode === "email" ? "No access to that email? Use your booking reference" : "Sign in with an email code instead"}
+          </button>
           {saved.length > 0 && (
             <div className="mt-8">
               <p className="font-label text-muted">On this device</p>
@@ -174,6 +269,28 @@ function Dashboard({ b, reload }: { b: ClientBooking; reload: () => Promise<void
               How to pay <ArrowRight weight="bold" className="size-4" />
             </Link>
           )}
+        </div>
+      )}
+
+      {!!b.others?.length && (
+        <div className="mt-6 flex flex-wrap items-center gap-2 text-sm">
+          <span className="text-muted">Other bookings under {b.signedInEmail}:</span>
+          {b.others.map((o) => (
+            <button
+              key={o.reference}
+              onClick={async () => {
+                try {
+                  await api("/api/entry/switch", { json: { reference: o.reference } });
+                  await reload();
+                } catch (e) {
+                  toast.error((e as Error).message);
+                }
+              }}
+              className="rounded-full border border-line bg-white px-3 py-1.5 font-mono font-semibold text-navy hover:bg-paper"
+            >
+              {o.reference} <span className="font-sans font-normal text-muted">· {o.status}</span>
+            </button>
+          ))}
         </div>
       )}
 

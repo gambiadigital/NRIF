@@ -256,3 +256,13 @@ begin
   return query select pa.id, pa.bib from participants pa where pa.booking_id = p_booking order by pa.position;
 end;
 $$;
+
+-- Email sign-in codes (sent by Neon Auth). Kept only to rate-limit requests per address.
+create table if not exists code_requests (
+  id      bigserial primary key,
+  email   text not null,
+  purpose text not null,
+  at      timestamptz not null default now()
+);
+create index if not exists code_requests_email_idx on code_requests (lower(email), at desc);
+create index if not exists bookings_email_idx on bookings (lower(email));

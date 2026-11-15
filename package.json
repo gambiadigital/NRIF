@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@neon/auth": "^0.8.2",
     "@neondatabase/serverless": "^1.2.1",
     "@phosphor-icons/react": "^2.1.10",
     "canvas-confetti": "^1.9.4",

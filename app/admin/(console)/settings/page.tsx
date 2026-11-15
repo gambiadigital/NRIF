@@ -157,11 +157,11 @@ function Admins() {
   const [password, setPassword] = useState("");
   async function add() {
     try {
-      await api("/api/admin/admins", { json: { name, email, password } });
+      await api("/api/admin/admins", { json: { name, email, ...(password ? { password } : {}) } });
       setName("");
       setEmail("");
       setPassword("");
-      toast.success("Admin added", { description: "Give them the password in person, and ask them to keep it private." });
+      toast.success("Admin added", { description: "They sign in at /admin/login with a code sent to their email." });
       await reload();
     } catch (e) {
       toast.error((e as Error).message);
@@ -169,6 +169,7 @@ function Admins() {
   }
   return (
     <Panel title="Admin accounts">
+      <p className="-mt-2 mb-4 text-sm text-muted">Staff sign in with a code sent to their email. A password is optional, as a fallback.</p>
       <ul className="divide-y divide-line">
         {data?.admins.map((a) => (
           <li key={a.id} className="flex items-center gap-3 py-3 text-sm">
@@ -184,8 +185,8 @@ function Admins() {
       <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_1fr_auto]">
         <TextInput value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" />
         <TextInput type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" />
-        <TextInput type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password, 10+ characters" autoComplete="new-password" />
-        <Button className="h-12" icon={<UserPlus weight="bold" className="size-4" />} disabled={!name || !email || password.length < 10} onClick={add}>
+        <TextInput type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password (optional)" autoComplete="new-password" />
+        <Button className="h-12" icon={<UserPlus weight="bold" className="size-4" />} disabled={!name || !/^\S+@\S+\.\S+$/.test(email) || (password.length > 0 && password.length < 10)} onClick={add}>
           Add
         </Button>
       </div>

@@ -7,7 +7,7 @@ export const ADMIN_COOKIE = "r4i_admin";
 export const ENTRY_COOKIE = "r4i_entry";
 
 export type AdminSession = { kind: "admin"; sub: string; name: string; exp: number };
-export type EntrySession = { kind: "entry"; sub: string; exp: number };
+export type EntrySession = { kind: "entry"; sub: string; exp: number; email?: string };
 
 const enc = new TextEncoder();
 
