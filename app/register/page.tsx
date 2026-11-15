@@ -3,7 +3,8 @@
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { House, GlobeHemisphereWest, MapPin, Sparkle, Check, Clock } from "@phosphor-icons/react";
-import { CITIES, CURRENCIES, EVENTS, RUN, type RaceEvent } from "@/lib/data";
+import { CITIES, CURRENCIES, RUN, type RaceEvent } from "@/lib/data";
+import { useLiveEvents, useStats } from "@/lib/client";
 import { useBooking, entryPrice, fmt, lead } from "@/lib/store";
 import { Segmented, Field, Combobox, Badge, RadioDot } from "@/components/ui/fields";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,8 @@ export default function ChooseEvent() {
   const b = useBooking();
   const router = useRouter();
   const me = lead(b);
+  const EVENTS = useLiveEvents().filter((e) => e.open !== false);
+  const cities = useStats().data?.cities.length ?? 0;
   const abroad = b.residence === "abroad";
   const virtual = EVENTS.filter((e) => e.kind === "virtual");
   const inPerson = EVENTS.filter((e) => e.kind === "in-person");
@@ -51,7 +54,7 @@ export default function ChooseEvent() {
                       <GlobeHemisphereWest weight="fill" className="size-4" />
                     </span>
                     <span className="text-sm font-semibold">
-                      You count toward 62 Cities, One Gambia. <span className="font-normal text-cobalt/80">{RUN.citiesCounted} cities so far.</span>
+                      You count toward 62 Cities, One Gambia. {cities > 0 && <span className="font-normal text-cobalt/80">{cities} {cities === 1 ? "city" : "cities"} so far.</span>}
                     </span>
                   </motion.div>
                 )}
@@ -80,7 +83,7 @@ export default function ChooseEvent() {
 
       <div className="mt-10 flex items-center justify-between">
         <h2 className="text-xl font-bold text-navy">Choose your event</h2>
-        <Badge tone="sun">{abroad ? "Sample amounts" : "Sample fees"}</Badge>
+        {abroad && <Badge tone="cobalt">Suggested donations</Badge>}
       </div>
 
       <div className="mt-4 space-y-2.5">

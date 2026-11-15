@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "motion/react";
 import { toPng } from "html-to-image";
 import { toast } from "sonner";
 import { CalendarBlank, Pulse, UploadSimple, Certificate, DownloadSimple, ShareNetwork, MapPin, Clock, IdentificationCard, Medal, ShieldCheck } from "@phosphor-icons/react";
-import { useBooking, total, fmt } from "@/lib/store";
 import { RUN, eventById } from "@/lib/data";
+import { money } from "@/lib/format";
+import { useBookingData } from "@/lib/booking-client";
+import { EntryGate } from "@/components/EntryGate";
 import { Bib } from "@/components/Bib";
 import { Button } from "@/components/ui/button";
 import { ShareSheet } from "@/components/ShareCard";
@@ -16,20 +18,37 @@ import { celebrate } from "@/lib/celebrate";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
+export default function VirtualConfirmationPage() {
+  return (
+    <Suspense fallback={<div className="min-h-[60vh]" />}>
+      <VirtualConfirmation />
+    </Suspense>
+  );
+}
+
 /** Frame 12: the virtual confirmation. No venue or start time; a run window, apps, proof and an e-bib instead. */
-export default function VirtualConfirmation() {
-  const b = useBooking();
+function VirtualConfirmation() {
+  const sp = useSearchParams();
+  const ref = sp.get("ref");
+  const key = sp.get("k");
   const router = useRouter();
+  const { data: b, error, loading } = useBookingData(ref, key);
   const bibRef = useRef<HTMLDivElement>(null);
   const [share, setShare] = useState(false);
-  const lead = b.participants[0]!;
-  const ev = eventById(lead.eventId);
-  const bib = b.bibs[lead.id] ?? "V1213";
 
   useEffect(() => {
-    const t = setTimeout(celebrate, 600);
-    return () => clearTimeout(t);
-  }, []);
+    if (!b) return;
+    if (b.status !== "paid") router.replace(`/register/pending${ref && key ? `?ref=${ref}&k=${encodeURIComponent(key)}` : ""}`);
+    else {
+      const t = setTimeout(celebrate, 600);
+      return () => clearTimeout(t);
+    }
+  }, [b, ref, key, router]);
+
+  if (!b || b.status !== "paid") return <EntryGate loading={loading} error={error} />;
+  const lead = b.participants.find((p) => eventById(p.eventId).kind === "virtual") ?? b.participants[0]!;
+  const ev = eventById(lead.eventId);
+  const bib = lead.bib ?? "";
 
   async function downloadBib() {
     if (!bibRef.current) return;
@@ -48,7 +67,7 @@ export default function VirtualConfirmation() {
   return (
     <div className="relative overflow-hidden">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[40rem] bg-[radial-gradient(60%_60%_at_50%_0%,rgb(42_49_129/0.16),transparent_70%)]" />
-      <div className="relative mx-auto grid max-w-6xl gap-12 px-4 pb-32 pt-10 sm:px-6 lg:grid-cols-[1fr_1fr] lg:pt-16">
+      <div className="relative mx-auto grid grid-cols-1 max-w-6xl gap-12 px-4 pb-32 pt-10 sm:px-6 lg:grid-cols-[1fr_1fr] lg:pt-16">
         <div>
           <div className="flex items-center gap-4">
             <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 380, damping: 16 }} className="grid size-14 place-items-center rounded-full bg-cobalt text-white">
@@ -59,7 +78,7 @@ export default function VirtualConfirmation() {
             <div>
               <h1 className="font-race text-[clamp(2.6rem,7vw,4.6rem)] text-navy">You&apos;re in, {lead.fullName.split(" ")[0]}</h1>
               <p className="text-muted">
-                {ev.name} · payment matched · {fmt(b, total(b))}
+                {ev.name} · payment matched · {money(b.total, b.currency as never, { decimals: b.currency !== "GMD" })}
               </p>
             </div>
           </div>
@@ -67,7 +86,7 @@ export default function VirtualConfirmation() {
           <motion.div initial={{ opacity: 0, scale: 0.5, rotate: -12, y: 50 }} animate={{ opacity: 1, scale: 1, rotate: -2, y: 0 }} transition={{ type: "spring", stiffness: 160, damping: 14, delay: 0.4 }} className="mt-10">
             <Tilt max={6}>
               <div ref={bibRef} className="rounded-[2rem] bg-paper p-2">
-                <Bib number={bib} eventId={lead.eventId} name={lead.bibName || undefined} qr={`R4I:${bib}`} />
+                <Bib number={bib} eventId={lead.eventId as never} name={lead.bibName || undefined} qr={`R4I:${b.reference}:${bib}`} />
               </div>
             </Tilt>
           </motion.div>
@@ -91,7 +110,7 @@ export default function VirtualConfirmation() {
             ))}
           </ul>
 
-          <div className="mt-8 grid gap-3 sm:grid-cols-2">
+          <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Button variant="cobalt" size="lg" icon={<DownloadSimple weight="bold" className="size-5" />} onClick={downloadBib}>
               Download e-bib
             </Button>
@@ -99,8 +118,8 @@ export default function VirtualConfirmation() {
               Upload my run (opens 23 Jan)
             </Button>
           </div>
-          <button onClick={() => setShare(true)} className="mt-4 flex items-center gap-2 text-sm font-semibold text-cobalt hover:underline">
-            <ShareNetwork weight="bold" className="size-4" /> Share that you are running from {b.contact.town || "abroad"}
+          <button onClick={() => setShare(true)} className="mt-2 flex items-center gap-2 py-2.5 text-left text-sm font-semibold text-cobalt hover:underline">
+            <ShareNetwork weight="bold" className="size-4" /> Share that you are running from {b.city?.split(",")[0] || b.town || "abroad"}
           </button>
         </div>
 

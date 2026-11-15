@@ -4,6 +4,7 @@ import Image from "next/image";
 import { motion } from "motion/react";
 import { Flask, Plant, Lightbulb, ArrowUpRight } from "@phosphor-icons/react";
 import { RUN } from "@/lib/data";
+import { useStats } from "@/lib/client";
 import { Marquee, Reveal, CountUp, RiseLines } from "@/components/ui/motion";
 import { NrifStacked } from "@/components/brand";
 
@@ -28,17 +29,20 @@ export function Ticker() {
 }
 
 const PILLARS = [
-  { icon: Flask, title: "Research grants", text: "Seed money for Gambian scientists working on health, food and climate." },
-  { icon: Plant, title: "Young innovators", text: "Fellowships and labs for students who want to build here, not leave." },
-  { icon: Lightbulb, title: "A fund that lasts", text: "The Endowment invests every dalasi and spends only what it earns." },
+  { icon: Flask, title: "Gambian research", text: "Support for researchers working on the questions that matter here: health, food, climate and more." },
+  { icon: Plant, title: "Young innovators", text: "Backing for young Gambians with ideas worth building at home." },
+  { icon: Lightbulb, title: "A fund that lasts", text: "An endowment keeps its capital working, so today's entries keep giving for years." },
 ];
 
 export function WhyWeRun() {
-  const pct = (RUN.raised / RUN.goal) * 100;
+  const stats = useStats().data;
+  const raised = stats?.raised ?? 0;
+  const goal = stats?.goal ?? RUN.goal;
+  const pct = Math.min(100, (raised / goal) * 100);
   return (
     <section id="why" className="relative scroll-mt-16 overflow-hidden py-24 sm:py-32">
       <div className="mx-auto max-w-[88rem] px-4 sm:px-6 lg:px-10">
-        <div className="grid gap-14 lg:grid-cols-[1.05fr_1fr] lg:gap-20">
+        <div className="grid grid-cols-1 gap-14 lg:grid-cols-[1.05fr_1fr] lg:gap-20">
           <div>
             <Reveal>
               <p className="font-label text-forest">Why we run</p>
@@ -52,7 +56,7 @@ export function WhyWeRun() {
                 Endowment Fund, so the money keeps working long after the last runner crosses the line.
               </p>
             </Reveal>
-            <div className="mt-10 grid gap-3 sm:grid-cols-3">
+            <div className="mt-10 grid grid-cols-1 gap-3 sm:grid-cols-3">
               {PILLARS.map((p, i) => (
                 <Reveal key={p.title} delay={0.1 + i * 0.08} className="rounded-[1.25rem] border border-line bg-white p-5">
                   <p.icon weight="duotone" className="size-7 text-forest" />
@@ -76,15 +80,15 @@ export function WhyWeRun() {
             <Reveal delay={0.2} className="relative -mt-28 ml-auto mr-4 w-[min(24rem,92%)] rounded-[1.5rem] bg-white p-6 shadow-pop sm:mr-[-1.5rem]">
               <div className="flex items-baseline justify-between">
                 <p className="font-label text-muted">Run goal</p>
-                <p className="text-sm font-semibold text-navy">GMD {RUN.goal.toLocaleString("en-GB")}</p>
+                <p className="text-sm font-semibold text-navy">GMD {goal.toLocaleString("en-GB")}</p>
               </div>
               <p className="mt-3 font-bib text-[3.2rem] text-forest">
-                <CountUp to={RUN.raised} format={(n) => `GMD ${Math.round(n).toLocaleString("en-GB")}`} />
+                <CountUp key={raised} to={raised} format={(n) => `GMD ${Math.round(n).toLocaleString("en-GB")}`} />
               </p>
               <div className="mt-3 h-3 overflow-hidden rounded-full bg-sand">
                 <motion.div
                   initial={{ width: 0 }}
-                  whileInView={{ width: `${pct}%` }}
+                  whileInView={{ width: `${Math.max(1.5, pct)}%` }}
                   viewport={{ once: true }}
                   transition={{ duration: 1.8, ease: [0.16, 1, 0.3, 1] }}
                   className="relative h-full overflow-hidden rounded-full bg-forest"
@@ -94,7 +98,7 @@ export function WhyWeRun() {
               </div>
               <p className="mt-3 flex items-center justify-between text-[0.8125rem] text-muted">
                 <span>Live total, updated as entries come in</span>
-                <span className="font-semibold text-navy">{pct.toFixed(0)}%</span>
+                <span className="font-semibold text-navy">{pct < 1 && pct > 0 ? "<1" : pct.toFixed(0)}%</span>
               </p>
             </Reveal>
           </div>
@@ -102,14 +106,14 @@ export function WhyWeRun() {
 
         <div className="mt-20 grid grid-cols-2 gap-px overflow-hidden rounded-[1.75rem] border border-line bg-line lg:grid-cols-4">
           {[
-            { v: RUN.entries, l: "Runners and walkers so far", f: (n: number) => Math.round(n).toLocaleString("en-GB") },
+            { v: stats?.entries ?? 0, l: "Runners and walkers so far", f: (n: number) => Math.round(n).toLocaleString("en-GB") },
             { v: 6, l: "Ways to take part", f: (n: number) => String(Math.round(n)) },
-            { v: RUN.citiesCounted, l: `Cities abroad, of ${RUN.citiesGoal}`, f: (n: number) => String(Math.round(n)) },
+            { v: stats?.cities.length ?? 0, l: `Cities abroad, of ${RUN.citiesGoal}`, f: (n: number) => String(Math.round(n)) },
             { v: 1965, l: "Metres in the Heritage walk", f: (n: number) => Math.round(n).toLocaleString("en-GB") },
           ].map((s) => (
             <div key={s.l} className="bg-white p-6 sm:p-8">
               <p className="font-bib text-[clamp(2.8rem,6vw,4.6rem)] text-navy">
-                <CountUp to={s.v} format={s.f} />
+                <CountUp key={s.v} to={s.v} format={s.f} />
               </p>
               <p className="mt-2 flex items-center gap-1.5 text-sm text-muted">
                 {s.l}

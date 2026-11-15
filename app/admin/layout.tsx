@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
-import { AdminShell } from "@/components/admin/Shell";
 
-export const metadata: Metadata = { title: { default: "Run admin", template: "%s · Run admin" } };
+export const metadata: Metadata = { title: { default: "Run admin", template: "%s · Run admin" }, robots: { index: false, follow: false } };
 
-export default function AdminLayout({ children }: LayoutProps<"/admin">) {
-  return <AdminShell>{children}</AdminShell>;
+export default function AdminRoot({ children }: LayoutProps<"/admin">) {
+  return children;
 }

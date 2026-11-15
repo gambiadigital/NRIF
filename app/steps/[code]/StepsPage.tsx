@@ -2,34 +2,86 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
-import { Footprints, HandHeart, ShareNetwork, Heart, CheckCircle } from "@phosphor-icons/react";
+import { Footprints, HandHeart, ShareNetwork, Heart, Copy, WarningCircle } from "@phosphor-icons/react";
 import { SiteHeader } from "@/components/site/Header";
 import { Button } from "@/components/ui/button";
-import { ChipGroup, PhoneField, TextInput } from "@/components/ui/fields";
+import { ChipGroup, TextInput, Field } from "@/components/ui/fields";
 import { Sheet } from "@/components/ui/sheet";
-import { CountUp } from "@/components/ui/motion";
-import { celebrate } from "@/lib/celebrate";
+import { PayMark } from "@/components/register/PayMethods";
+import { api, useApi, useSettings, invalidate } from "@/lib/client";
 
-const SUPPORTERS = [
-  { n: "Ebrima J.", a: 1000, m: "Go sister, all the way to Bakau.", t: "2 h" },
-  { n: "Mariama C.", a: 500, m: "For the girls in science.", t: "5 h" },
-  { n: "A friend in Atlanta", a: 1300, m: "", t: "1 day" },
-  { n: "Ousman S.", a: 250, m: "Every step counts.", t: "1 day" },
-  { n: "Isatou B.", a: 300, m: "", t: "2 days" },
-  { n: "Lamin T.", a: 650, m: "Running the virtual one from London, see you on the map.", t: "3 days" },
-];
+type StepsData = {
+  code: string;
+  first: string;
+  event: string;
+  others: number;
+  raised: number;
+  pledged: number;
+  supporters: number;
+  list: { name: string | null; message: string | null; amount: number; status: string; created_at: string }[];
+  steps: number;
+  week: { day: string; steps: number }[];
+};
 
-/** The public page behind a steps-challenge code: friends give to the runner, the fund gets every dalasi. */
+const GOAL = 10_000;
+const ago = (iso: string) => {
+  const h = Math.round((Date.now() - new Date(iso).getTime()) / 3600_000);
+  return h < 1 ? "just now" : h < 24 ? `${h} h` : `${Math.round(h / 24)} d`;
+};
+
+/** The public page behind a steps-challenge code: friends pledge, staff match the money, the fund grows. */
 export function StepsPage({ code }: { code: string }) {
-  const [raised, setRaised] = useState(6850);
-  const [count, setCount] = useState(14);
+  const [nonce, setNonce] = useState(0);
+  const { data, error, loading } = useApi<StepsData>(`/api/steps/${encodeURIComponent(code)}?n=${nonce}`, 0);
+  const settings = useSettings().data;
   const [give, setGive] = useState(false);
   const [amount, setAmount] = useState<number>(250);
-  const [done, setDone] = useState(false);
-  const goal = 10000;
-  const pct = Math.min(100, (raised / goal) * 100);
+  const [name, setName] = useState("");
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [pledge, setPledge] = useState<{ reference: string; amount: number } | null>(null);
+
+  if (!data) {
+    return (
+      <>
+        <SiteHeader />
+        <main className="mx-auto max-w-xl px-4 pt-[calc(var(--header-h)+5rem)]">
+          {loading ? (
+            <div className="h-64 animate-pulse rounded-[2rem] bg-sand" />
+          ) : (
+            <div className="rounded-[1.75rem] border border-line bg-white p-8 text-center shadow-card">
+              <WarningCircle weight="duotone" className="mx-auto size-12 text-sun-600" />
+              <h1 className="mt-4 text-2xl font-bold text-navy">We could not find {code}</h1>
+              <p className="mt-2 text-muted">{error ?? "Check the code with the runner."}</p>
+              <Link href="/" className="mt-6 inline-flex h-11 items-center rounded-full bg-forest px-6 font-semibold text-white">
+                About the run
+              </Link>
+            </div>
+          )}
+        </main>
+      </>
+    );
+  }
+
+  const pct = Math.min(100, (data.raised / GOAL) * 100);
+  const maxDay = Math.max(1, ...data.week.map((d) => d.steps));
+
+  async function send() {
+    setBusy(true);
+    try {
+      const p = await api<{ reference: string; amount: number }>(`/api/steps/${encodeURIComponent(code)}/pledge`, { json: { amount, name: name || undefined, message: message || undefined } });
+      setPledge(p);
+      invalidate(`/api/steps/${encodeURIComponent(code)}`);
+      setNonce((n) => n + 1);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <>
@@ -37,94 +89,95 @@ export function StepsPage({ code }: { code: string }) {
       <main className="pt-[var(--header-h)]">
         <section className="relative overflow-hidden bg-sun">
           <Footprints weight="fill" className="absolute -right-10 -top-10 size-72 rotate-12 text-white/25" />
-          <div className="relative mx-auto grid max-w-6xl items-end gap-8 px-4 pt-12 sm:px-6 lg:grid-cols-[1fr_22rem]">
+          <div className="relative mx-auto grid max-w-6xl grid-cols-1 items-end gap-8 px-4 pt-12 sm:px-6 lg:grid-cols-[1fr_22rem]">
             <div className="pb-12">
               <p className="flex items-center gap-2 font-label text-navy">
-                <Footprints weight="fill" className="size-4" /> Steps challenge · {code}
+                <Footprints weight="fill" className="size-4" /> Steps challenge · {data.code}
               </p>
-              <h1 className="mt-4 font-race text-[clamp(2.8rem,8vw,5.6rem)] text-navy">Fatou is walking for Gambian research</h1>
+              <h1 className="mt-4 font-race text-[clamp(2.8rem,8vw,5.6rem)] text-navy">{data.first} is stepping up for Gambian research</h1>
               <p className="mt-4 max-w-xl text-lg text-navy/75">
-                Fatou runs the 10K on 30 January and walks the Heritage walk with Awa and Musa. Every step she logs, and every dalasi you give, goes to NRIF&apos;s Endowment Fund.
+                {data.first} is in the {data.event} on 30 January{data.others > 0 ? `, with ${data.others} more in the same booking` : ""}. Every gift goes to NRIF&apos;s Endowment Fund.
               </p>
             </div>
-            <motion.div initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }} className="relative mx-auto h-[22rem] w-full max-w-[18rem] lg:h-[26rem]">
-              <Image src="/media/runner-woman.webp" alt="Fatou running" fill sizes="300px" className="object-contain object-bottom drop-shadow-[0_20px_30px_rgb(11_27_58/0.25)]" priority />
+            <motion.div initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }} className="relative mx-auto hidden h-[24rem] w-full max-w-[17rem] lg:block">
+              <Image src="/media/runner-woman.webp" alt="" fill sizes="280px" className="object-contain object-bottom drop-shadow-[0_20px_30px_rgb(11_27_58/0.25)]" priority />
             </motion.div>
           </div>
         </section>
 
-        <div className="mx-auto grid max-w-6xl gap-8 px-4 pb-32 pt-10 sm:px-6 lg:grid-cols-[1fr_22rem]">
+        <div className="mx-auto grid max-w-6xl grid-cols-1 gap-8 px-4 pb-32 pt-10 sm:px-6 lg:grid-cols-[1fr_22rem]">
           <div>
             <div className="rounded-[1.75rem] border border-line bg-white p-6 shadow-card sm:p-8">
               <div className="flex flex-wrap items-end justify-between gap-4">
                 <div>
-                  <motion.p key={raised} initial={{ y: 8, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="font-bib text-[3.6rem] leading-none text-forest">
-                    GMD {raised.toLocaleString("en-GB")}
-                  </motion.p>
+                  <p className="font-bib text-[3.6rem] leading-none text-forest">GMD {data.raised.toLocaleString("en-GB")}</p>
                   <p className="mt-1 text-muted">
-                    raised of GMD {goal.toLocaleString("en-GB")} by {count} supporters
+                    given by {data.supporters} {data.supporters === 1 ? "supporter" : "supporters"}
+                    {data.pledged > 0 && ` · GMD ${data.pledged.toLocaleString("en-GB")} on its way`}
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="font-bib text-[2.4rem] leading-none text-navy">
-                    <CountUp to={146880} />
-                  </p>
+                  <p className="font-bib text-[2.4rem] leading-none text-navy">{data.steps.toLocaleString("en-GB")}</p>
                   <p className="text-sm text-muted">steps logged</p>
                 </div>
               </div>
               <div className="mt-6 h-4 overflow-hidden rounded-full bg-sand">
-                <motion.div animate={{ width: `${pct}%` }} initial={{ width: 0 }} transition={{ duration: 1.4, ease: [0.16, 1, 0.3, 1] }} className="relative h-full overflow-hidden rounded-full bg-forest">
+                <motion.div animate={{ width: `${Math.max(2, pct)}%` }} initial={{ width: 0 }} transition={{ duration: 1.4, ease: [0.16, 1, 0.3, 1] }} className="relative h-full overflow-hidden rounded-full bg-forest">
                   <span className="absolute inset-y-0 w-1/3 animate-shine bg-white/30" />
                 </motion.div>
               </div>
-              <div className="mt-6 grid grid-cols-7 gap-1.5">
-                {[8200, 11400, 6900, 14200, 9800, 12600, 15100].map((s, i) => (
-                  <div key={i} className="flex flex-col items-center gap-1.5">
-                    <div className="flex h-24 w-full items-end overflow-hidden rounded-lg bg-paper">
-                      <motion.div initial={{ height: 0 }} whileInView={{ height: `${(s / 16000) * 100}%` }} viewport={{ once: true }} transition={{ delay: i * 0.06, duration: 0.8, ease: [0.16, 1, 0.3, 1] }} className="w-full rounded-lg bg-sun" />
+              <p className="mt-2 text-sm text-muted">Towards GMD {GOAL.toLocaleString("en-GB")}</p>
+              {data.week.length > 0 && (
+                <div className="mt-6 grid grid-cols-7 gap-1.5">
+                  {data.week.map((d, i) => (
+                    <div key={d.day} className="flex flex-col items-center gap-1.5">
+                      <div className="flex h-24 w-full items-end overflow-hidden rounded-lg bg-paper">
+                        <motion.div initial={{ height: 0 }} animate={{ height: `${(d.steps / maxDay) * 100}%` }} transition={{ delay: i * 0.06, duration: 0.8, ease: [0.16, 1, 0.3, 1] }} className="w-full rounded-lg bg-sun" />
+                      </div>
+                      <span className="text-[0.6875rem] text-muted">{new Date(d.day).toLocaleDateString("en-GB", { weekday: "short" })}</span>
                     </div>
-                    <span className="text-[0.6875rem] text-muted">{["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][i]}</span>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <h2 className="mb-4 mt-10 text-xl font-bold text-navy">Supporters</h2>
+            {data.list.length === 0 && <p className="rounded-2xl border border-dashed border-line p-6 text-center text-muted">Be the first to back {data.first}.</p>}
             <ul className="space-y-2">
-              <AnimatePresence initial={false}>
-                {done && (
-                  <motion.li initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="flex items-start gap-4 rounded-2xl bg-forest-50 p-4 ring-1 ring-forest/15">
-                    <Heart weight="fill" className="mt-0.5 size-5 text-ember" />
-                    <span className="flex-1">
-                      <span className="font-semibold text-navy">You</span>
-                      <span className="block text-sm text-muted">Just now</span>
-                    </span>
-                    <span className="font-bold text-forest">GMD {amount.toLocaleString("en-GB")}</span>
-                  </motion.li>
-                )}
-              </AnimatePresence>
-              {SUPPORTERS.map((s) => (
-                <li key={s.n} className="flex items-start gap-4 rounded-2xl border border-line bg-white p-4">
-                  <span className="grid size-10 shrink-0 place-items-center rounded-full bg-sand text-sm font-bold text-navy">{s.n[0]}</span>
+              {data.list.map((s, i) => (
+                <li key={i} className="flex items-start gap-4 rounded-2xl border border-line bg-white p-4">
+                  <span className="grid size-10 shrink-0 place-items-center rounded-full bg-sand text-sm font-bold text-navy">{(s.name || "A")[0]!.toUpperCase()}</span>
                   <span className="min-w-0 flex-1">
-                    <span className="font-semibold text-navy">{s.n}</span> <span className="text-sm text-faint">· {s.t}</span>
-                    {s.m && <span className="mt-0.5 block text-sm text-muted">{s.m}</span>}
+                    <span className="font-semibold text-navy">{s.name || "A supporter"}</span> <span className="text-sm text-faint">· {ago(s.created_at)}</span>
+                    {s.message && <span className="mt-0.5 block text-sm text-muted">{s.message}</span>}
                   </span>
-                  <span className="font-bold text-navy tabular">GMD {s.a.toLocaleString("en-GB")}</span>
+                  <span className="text-right">
+                    <span className="block font-bold text-navy tabular">GMD {s.amount.toLocaleString("en-GB")}</span>
+                    {s.status !== "paid" && <span className="text-xs text-faint">on its way</span>}
+                  </span>
                 </li>
               ))}
             </ul>
           </div>
 
-          <aside className="lg:pt-0">
+          <aside>
             <div className="sticky top-24 space-y-3 rounded-[1.75rem] bg-navy p-6 text-white">
               <HandHeart weight="duotone" className="size-9 text-sun" />
-              <p className="text-xl font-bold">Back Fatou&apos;s steps</p>
-              <p className="text-sm text-white/65">Pay with Wave or Yonna at home, or Remitly from abroad.</p>
+              <p className="text-xl font-bold">Back {data.first}&apos;s steps</p>
+              <p className="text-sm text-white/65">Pay with Wave or Yonna at home, or Remitly or ACE from abroad.</p>
               <Button variant="sun" size="lg" block onClick={() => setGive(true)}>
-                Give to {code}
+                Give to {data.code}
               </Button>
-              <Button variant="glass" size="lg" block icon={<ShareNetwork weight="bold" className="size-5" />} onClick={() => toast.success("Link copied", { description: `run4independence.gm/steps/${code}` })}>
+              <Button
+                variant="glass"
+                size="lg"
+                block
+                icon={<ShareNetwork weight="bold" className="size-5" />}
+                onClick={() => {
+                  navigator.clipboard?.writeText(window.location.href).catch(() => {});
+                  toast.success("Link copied", { description: window.location.href });
+                }}
+              >
                 Share this page
               </Button>
             </div>
@@ -134,38 +187,73 @@ export function StepsPage({ code }: { code: string }) {
 
       <Sheet
         open={give}
-        onOpenChange={setGive}
-        title={`Give to ${code}`}
-        description="Every dalasi goes to the Endowment Fund."
+        onOpenChange={(o) => {
+          setGive(o);
+          if (!o) setPledge(null);
+        }}
+        title={pledge ? "Now send your gift" : `Give to ${data.code}`}
+        description={pledge ? "Quote the reference so we can match it." : "Every dalasi goes to the Endowment Fund."}
         footer={
-          <Button
-            block
-            size="lg"
-            onClick={() => {
-              setGive(false);
-              setDone(true);
-              setRaised((r) => r + amount);
-              setCount((c) => c + 1);
-              setTimeout(celebrate, 250);
-              toast.success("Thank you", { description: `GMD ${amount.toLocaleString("en-GB")} for Fatou's steps.`, icon: <CheckCircle weight="fill" className="size-5 text-forest" /> });
-            }}
-          >
-            Give GMD {amount.toLocaleString("en-GB")} with Wave
-          </Button>
+          pledge ? (
+            <Button block size="lg" onClick={() => setGive(false)}>
+              Done
+            </Button>
+          ) : (
+            <Button block size="lg" disabled={busy} onClick={send}>
+              {busy ? "One moment…" : `Give GMD ${amount.toLocaleString("en-GB")}`}
+            </Button>
+          )
         }
       >
-        <div className="space-y-5">
-          <ChipGroup value={amount} onChange={setAmount} options={[100, 250, 500, 1000, 2500].map((v) => ({ value: v, label: `GMD ${v.toLocaleString("en-GB")}` }))} />
-          <TextInput placeholder="Your name (or leave blank to give quietly)" />
-          <TextInput placeholder="A message for Fatou" />
-          <GivePhone />
-        </div>
+        <AnimatePresence mode="wait">
+          {!pledge ? (
+            <motion.div key="form" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-5">
+              <ChipGroup value={amount} onChange={setAmount} options={[100, 250, 500, 1000, 2500].map((v) => ({ value: v, label: `GMD ${v.toLocaleString("en-GB")}` }))} />
+              <Field label="Your name" optional hint="Leave blank to give quietly">
+                <TextInput value={name} onChange={(e) => setName(e.target.value.slice(0, 60))} />
+              </Field>
+              <Field label={`A message for ${data.first}`} optional>
+                <TextInput value={message} onChange={(e) => setMessage(e.target.value.slice(0, 200))} />
+              </Field>
+            </motion.div>
+          ) : (
+            <motion.div key="pay" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+              <button
+                onClick={() => {
+                  navigator.clipboard?.writeText(pledge.reference).catch(() => {});
+                  toast.success("Reference copied");
+                }}
+                className="flex w-full items-center justify-between rounded-2xl border-2 border-dashed border-cobalt/60 bg-cobalt-50/40 px-5 py-4"
+              >
+                <span className="font-mono text-3xl font-bold tracking-wider text-cobalt">{pledge.reference}</span>
+                <Copy weight="bold" className="size-5 text-cobalt" />
+              </button>
+              <p className="text-sm text-muted">Send GMD {pledge.amount.toLocaleString("en-GB")} by any of these and put {pledge.reference} in the note:</p>
+              {[
+                { id: "wave" as const, t: "Wave", v: settings?.wave_number || "+220 83 379 6680", href: settings?.wave_link },
+                { id: "yonna" as const, t: "Yonna", v: settings?.yonna_number || "+220 83 379 6680" },
+                { id: "ecobank" as const, t: "Ecobank", v: `Account ${settings?.ecobank_account || "6240050636"}` },
+              ].map((m) => (
+                <div key={m.id} className="flex items-center gap-3 rounded-2xl border border-line p-3">
+                  <PayMark id={m.id} />
+                  <span className="flex-1">
+                    <span className="block font-semibold text-navy">{m.t}</span>
+                    <span className="block text-sm text-muted">{m.v}</span>
+                  </span>
+                  {m.href && (
+                    <a href={m.href} className="rounded-full bg-[#1dc3f3] px-3 py-2 text-sm font-semibold text-navy">
+                      Open
+                    </a>
+                  )}
+                </div>
+              ))}
+              <p className="flex items-center gap-2 text-sm text-forest">
+                <Heart weight="fill" className="size-4" /> Your gift shows on this page now, and counts once NRIF matches it.
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </Sheet>
     </>
   );
-}
-
-function GivePhone() {
-  const [p, setP] = useState({ iso: "GM", digits: "" });
-  return <PhoneField value={p} onChange={setP} />;
 }

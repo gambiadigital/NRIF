@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { Accordion } from "radix-ui";
-import { MagnifyingGlass, Plus, WhatsappLogo, Phone, EnvelopeSimple, MapPin, FileText, ArrowsLeftRight } from "@phosphor-icons/react";
+import { MagnifyingGlass, Plus, FileText, ArrowsLeftRight } from "@phosphor-icons/react";
+import { ContactList, useContacts } from "@/components/site/Contact";
 import { SiteHeader } from "@/components/site/Header";
 import { SiteFooter } from "@/components/site/Footer";
 import { FAQS } from "@/lib/data";
@@ -54,7 +55,7 @@ export default function Help() {
               <ArrowsLeftRight weight="duotone" className="size-7 text-forest" /> Refund and transfer policy
             </h2>
             <p className="mt-1 text-sm text-muted">Version {POLICY.version}</p>
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
               {POLICY.sections.map((s) => (
                 <div key={s.h} className="rounded-[1.25rem] border border-line bg-white p-5">
                   <p className="font-bold text-navy">{s.h}</p>
@@ -81,28 +82,21 @@ export default function Help() {
             </div>
           </section>
 
-          <section id="contact" className="mt-16 scroll-mt-24">
-            <h2 className="text-2xl font-bold text-navy">Talk to the team</h2>
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              {[
-                { icon: WhatsappLogo, l: "WhatsApp", v: "+220 87 700 1965", c: "text-[#25D366]" },
-                { icon: Phone, l: "Phone, 09:00 to 17:00", v: "+220 4 420 1965", c: "text-navy" },
-                { icon: EnvelopeSimple, l: "Email", v: "run@nrif.gm", c: "text-navy" },
-                { icon: MapPin, l: "Office", v: "NRIF, Kotu Layout, KMC", c: "text-navy" },
-              ].map((x) => (
-                <a key={x.l} href="#" className="flex items-center gap-4 rounded-[1.25rem] border border-line bg-white p-5 transition-colors hover:bg-paper">
-                  <x.icon weight="fill" className={`size-7 ${x.c}`} />
-                  <span>
-                    <span className="block text-sm text-muted">{x.l}</span>
-                    <span className="block font-semibold text-navy">{x.v}</span>
-                  </span>
-                </a>
-              ))}
-            </div>
-          </section>
+          <HelpContact />
         </div>
       </main>
       <SiteFooter />
     </>
+  );
+}
+
+function HelpContact() {
+  const items = useContacts();
+  if (!items.length) return null;
+  return (
+    <section id="contact" className="mt-16 scroll-mt-24">
+      <h2 className="text-2xl font-bold text-navy">Talk to the team</h2>
+      <ContactList big className="mt-5" />
+    </section>
   );
 }

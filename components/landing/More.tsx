@@ -4,28 +4,30 @@ import Image from "next/image";
 import Link from "next/link";
 import { Accordion } from "radix-ui";
 import { motion } from "motion/react";
-import { Footprints, Plus, Student, Buildings, Trophy, WhatsappLogo, EnvelopeSimple, Phone, ArrowUpRight, TShirt, Medal, LockSimple } from "@phosphor-icons/react";
-import { FAQS, RUN, TEAMS } from "@/lib/data";
+import { Footprints, Plus, Student, Buildings, Trophy, ArrowUpRight, TShirt, Medal, LockSimple } from "@phosphor-icons/react";
+import { ContactList, useContacts } from "@/components/site/Contact";
+import { FAQS, RUN } from "@/lib/data";
+import { useStats } from "@/lib/client";
 import { Reveal, RiseLines, Marquee, Tilt } from "@/components/ui/motion";
 import { ButtonLink } from "@/components/ui/button";
 import { Countdown } from "@/components/Countdown";
 import { Bib } from "@/components/Bib";
 
 export function Challenge() {
-  const teams = Object.entries(TEAMS).sort((a, b) => b[1].members - a[1].members);
+  const teams = useStats().data?.teams ?? [];
   return (
     <section className="py-24 sm:py-32">
-      <div className="mx-auto grid max-w-[88rem] gap-4 px-4 sm:px-6 lg:grid-cols-2 lg:px-10">
+      <div className="mx-auto grid grid-cols-1 max-w-[88rem] gap-4 px-4 sm:px-6 lg:grid-cols-2 lg:px-10">
         <Reveal className="relative flex flex-col overflow-hidden rounded-[2rem] bg-sun p-7 text-navy sm:p-10">
           <div className="relative z-10 max-w-md">
             <p className="font-label">The steps challenge</p>
             <h3 className="mt-4 font-race text-[clamp(2.6rem,5vw,4.4rem)]">Turn steps into research</h3>
             <p className="mt-4 text-[1.0625rem] leading-relaxed text-navy/75">
-              Tick one box when you sign up and you get a code like <b className="font-mono">SC-1047</b>. Friends and family give to it, wherever they are. Every
-              step you log grows the Endowment Fund.
+              Tick one box when you sign up and your bib number becomes a code like <b className="font-mono">SC-1047</b>. Friends and family give to it, wherever
+              they are, and every step you log shows on your page.
             </p>
-            <ButtonLink href="/steps/SC-1047" variant="ink" size="lg" arrow className="mt-7">
-              See Fatou&apos;s page
+            <ButtonLink href="/register" variant="ink" size="lg" arrow className="mt-7">
+              Sign up and take part
             </ButtonLink>
           </div>
           <div className="relative z-10 mt-10 w-full max-w-[19rem] self-end sm:mt-auto sm:pt-10">
@@ -35,8 +37,8 @@ export function Challenge() {
                   <Image src="/media/runner-woman.webp" alt="" fill sizes="44px" className="object-cover object-top" />
                 </span>
                 <div>
-                  <p className="font-semibold">Fatou Jallow</p>
-                  <p className="text-xs text-muted">10K · SC-1047</p>
+                  <p className="font-semibold">Your steps page</p>
+                  <p className="text-xs text-muted">Example · SC-1047</p>
                 </div>
               </div>
               <div className="mt-5 flex items-center gap-5">
@@ -62,18 +64,19 @@ export function Challenge() {
             Your organiser shares a team code. Everyone who enters it is grouped together, and the biggest teams get a place on the stage at 10:00.
           </p>
           <ol className="mt-8 space-y-2">
-            {teams.map(([code, t], i) => (
-              <li key={code} className="flex items-center gap-4 rounded-2xl bg-white/[0.08] p-3 pr-4 ring-1 ring-white/10">
+            {teams.length === 0 && <li className="rounded-2xl bg-white/[0.08] p-4 text-sm text-white/70 ring-1 ring-white/10">Ask NRIF for a team code for your school, company or club.</li>}
+            {teams.map((t, i) => (
+              <li key={t.code} className="flex items-center gap-4 rounded-2xl bg-white/[0.08] p-3 pr-4 ring-1 ring-white/10">
                 <span className="grid size-10 place-items-center rounded-xl bg-white/10 font-bib text-xl">{i + 1}</span>
                 <span className="grid size-9 place-items-center rounded-xl bg-white text-forest">
                   {t.kind === "school" ? <Student weight="fill" className="size-5" /> : t.kind === "club" ? <Trophy weight="fill" className="size-5" /> : <Buildings weight="fill" className="size-5" />}
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-semibold">{t.name}</span>
-                  <span className="block font-mono text-xs text-white/55">{code}</span>
+                  <span className="block font-mono text-xs text-white/55">{t.code}</span>
                 </span>
                 <span className="text-right">
-                  <span className="block font-bib text-2xl leading-none">{t.members}</span>
+                  <span className="block font-bib text-2xl leading-none">{t.n}</span>
                   <span className="text-[0.6875rem] text-white/55">runners</span>
                 </span>
               </li>
@@ -88,7 +91,7 @@ export function Challenge() {
 export function Kit() {
   return (
     <section className="relative overflow-hidden bg-sand py-24 sm:py-32">
-      <div className="mx-auto grid max-w-[88rem] items-center gap-12 px-4 sm:px-6 lg:grid-cols-2 lg:px-10">
+      <div className="mx-auto grid grid-cols-1 max-w-[88rem] items-center gap-12 px-4 sm:px-6 lg:grid-cols-2 lg:px-10">
         <div>
           <Reveal>
             <p className="font-label text-forest">Race kit</p>
@@ -162,7 +165,7 @@ export function Gallery() {
 export function Faq() {
   return (
     <section id="faq" className="scroll-mt-16 bg-white py-24 sm:py-32">
-      <div className="mx-auto grid max-w-[88rem] gap-12 px-4 sm:px-6 lg:grid-cols-[0.8fr_1.2fr] lg:px-10">
+      <div className="mx-auto grid grid-cols-1 max-w-[88rem] gap-12 px-4 sm:px-6 lg:grid-cols-[0.8fr_1.2fr] lg:px-10">
         <div>
           <Reveal>
             <p className="font-label text-forest">Questions</p>
@@ -170,23 +173,7 @@ export function Faq() {
           <h2 className="mt-5 font-race text-[clamp(2.8rem,7vw,5.4rem)] text-navy">
             <RiseLines lines={["Good to", "know"]} />
           </h2>
-          <Reveal delay={0.1} className="mt-8 rounded-[1.5rem] bg-paper p-6">
-            <p className="font-semibold text-navy">Still not sure?</p>
-            <p className="mt-1 text-sm text-muted">The NRIF team answers within a working day.</p>
-            <div className="mt-5 grid gap-2">
-              {[
-                { icon: WhatsappLogo, l: "WhatsApp", v: "+220 87 700 1965", c: "text-[#25D366]" },
-                { icon: Phone, l: "Call", v: "+220 4 420 1965", c: "text-navy" },
-                { icon: EnvelopeSimple, l: "Email", v: "run@nrif.gm", c: "text-navy" },
-              ].map((x) => (
-                <a key={x.l} href="#" className="flex items-center gap-3 rounded-2xl bg-white p-3 transition-colors hover:bg-sand">
-                  <x.icon weight="fill" className={`size-5 ${x.c}`} />
-                  <span className="text-sm text-muted">{x.l}</span>
-                  <span className="ml-auto text-sm font-semibold text-navy">{x.v}</span>
-                </a>
-              ))}
-            </div>
-          </Reveal>
+          <StillNotSure />
         </div>
         <Accordion.Root type="single" collapsible defaultValue="0" className="divide-y divide-line border-y border-line">
           {FAQS.slice(0, 7).map((f, i) => (
@@ -250,5 +237,17 @@ export function FinalCta() {
         </div>
       </div>
     </section>
+  );
+}
+
+function StillNotSure() {
+  const items = useContacts();
+  if (!items.length) return null;
+  return (
+    <Reveal delay={0.1} className="mt-8 rounded-[1.5rem] bg-paper p-6">
+      <p className="font-semibold text-navy">Still not sure?</p>
+      <p className="mt-1 text-sm text-muted">Ask the NRIF team.</p>
+      <ContactList className="mt-5" />
+    </Reveal>
   );
 }

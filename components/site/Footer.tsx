@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FacebookLogo, InstagramLogo, TiktokLogo, XLogo } from "@phosphor-icons/react/dist/ssr";
+import { FooterSocials } from "./FooterSocials";
 import { R4ILogo, NrifLockup, FlagBars } from "@/components/brand";
 import { RUN } from "@/lib/data";
 
@@ -10,7 +10,7 @@ const COLS = [
       { href: "/#events", label: "Events and fees" },
       { href: "/#race-day", label: "Race-day plan" },
       { href: "/#abroad", label: "Run from abroad" },
-      { href: "/steps/SC-1047", label: "Steps challenge" },
+      { href: "/#faq", label: "Questions" },
     ],
   },
   {
@@ -19,7 +19,7 @@ const COLS = [
       { href: "/register", label: "Sign up" },
       { href: "/my-entry", label: "My entry" },
       { href: "/my-entry/upload", label: "Upload a virtual run" },
-      { href: "/messages", label: "Messages we send" },
+      
     ],
   },
   {
@@ -38,29 +38,23 @@ export function SiteFooter() {
     <footer className="relative overflow-hidden bg-navy text-white">
       <div className="h-1.5 flag-rule" />
       <div className="mx-auto max-w-[88rem] px-4 pb-28 pt-16 sm:px-6 lg:px-10">
-        <div className="grid gap-12 lg:grid-cols-[1.3fr_2fr]">
+        <div className="grid grid-cols-1 gap-12 lg:grid-cols-[1.3fr_2fr]">
           <div className="space-y-6">
             <R4ILogo reverse className="w-44" />
             <p className="max-w-sm text-[0.9375rem] leading-relaxed text-white/65">
               {RUN.dateLong} at {RUN.venue}, {RUN.venueArea}, and anywhere in the world from 23 to 31 January. Every entry grows NRIF&apos;s
               Endowment Fund for Gambian research and innovation.
             </p>
-            <div className="flex gap-2">
-              {[FacebookLogo, InstagramLogo, TiktokLogo, XLogo].map((I, i) => (
-                <a key={i} href="#" aria-label="NRIF social" className="grid size-10 place-items-center rounded-full bg-white/8 ring-1 ring-white/10 transition-colors hover:bg-white/15">
-                  <I weight="fill" className="size-[1.1rem]" />
-                </a>
-              ))}
-            </div>
+            <FooterSocials />
           </div>
           <div className="grid grid-cols-2 gap-8 sm:grid-cols-3">
             {COLS.map((c) => (
               <div key={c.title}>
                 <p className="font-label text-white/45">{c.title}</p>
-                <ul className="mt-4 space-y-2.5">
+                <ul className="mt-3 space-y-0.5">
                   {c.links.map((l) => (
                     <li key={l.href}>
-                      <Link href={l.href} className="text-[0.9375rem] text-white/80 transition-colors hover:text-sun">
+                      <Link href={l.href} className="inline-block py-1.5 text-[0.9375rem] text-white/80 transition-colors hover:text-sun">
                         {l.label}
                       </Link>
                     </li>
@@ -77,7 +71,7 @@ export function SiteFooter() {
           </div>
           <div className="flex items-center gap-4 text-xs text-white/45">
             <FlagBars />
-            <span>© 2026 National Research &amp; Innovation Fund, The Gambia. Fees and times shown are samples.</span>
+            <span>© 2026 National Research &amp; Innovation Fund, The Gambia.</span>
           </div>
         </div>
       </div>

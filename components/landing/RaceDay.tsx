@@ -142,7 +142,7 @@ export function RaceDay() {
   return (
     <section id="race-day" className="relative scroll-mt-16 overflow-hidden py-24 sm:py-32">
       <div className="mx-auto max-w-[88rem] px-4 sm:px-6 lg:px-10">
-        <div className="grid gap-14 lg:grid-cols-[0.9fr_1.1fr] lg:gap-20">
+        <div className="grid grid-cols-1 gap-14 lg:grid-cols-[0.9fr_1.1fr] lg:gap-20">
           <div>
             <Reveal>
               <p className="font-label text-forest">Race day · {RUN.dateLong}</p>
@@ -168,7 +168,7 @@ export function RaceDay() {
             <Reveal>
               <CourseMap />
             </Reveal>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Reveal delay={0.05} className="relative overflow-hidden rounded-[1.5rem] bg-navy p-6 text-white">
                 <Image src="/media/race-pack.webp" alt="" fill sizes="(min-width: 640px) 25vw, 100vw" className="object-cover opacity-35" />
                 <div className="relative">

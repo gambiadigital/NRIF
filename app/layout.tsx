@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { Providers } from "@/components/Providers";
-import { ProtoNav } from "@/components/ProtoNav";
 import "./globals.css";
 
 /*
@@ -62,7 +61,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-dvh">
         <Providers>
           {children}
-          <ProtoNav />
         </Providers>
       </body>
     </html>

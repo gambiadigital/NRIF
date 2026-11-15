@@ -10,14 +10,24 @@ const project = (lat: number, lng: number) => ({
   y: ((MAP.lat1 - lat) / (MAP.lat1 - MAP.lat0)) * MAP.h,
 });
 
-/** Banjul at the centre, an arc to every diaspora city that has entries. */
-export function CitiesMap({ tone = "dark", className, labels = true }: { tone?: "dark" | "light"; className?: string; labels?: boolean }) {
+/**
+ * Banjul at the centre, an arc to every diaspora city with paid entries. Counts come from the database; a city is
+ * drawn when we know where it is (lib/data.ts CITIES). With no entries yet, the known cities show as faint dots.
+ */
+export function CitiesMap({ tone = "dark", className, labels = true, counts = [] }: { tone?: "dark" | "light"; className?: string; labels?: boolean; counts?: { city: string; n: number }[] }) {
   const home = project(BANJUL.lat, BANJUL.lng);
-  const top = [...CITIES].sort((a, b) => b.count - a.count);
-  const labelled = new Set(["London", "New York", "Atlanta", "Stockholm", "Dakar", "Barcelona", "Berlin", "Dubai", "Toronto", "Lagos"]);
+  const n = new Map(counts.map((c) => [c.city.toLowerCase(), c.n]));
+  const live = CITIES.map((c) => ({ ...c, count: n.get(c.city.toLowerCase()) ?? 0 })).filter((c) => c.count > 0).sort((a, b) => b.count - a.count);
+  const top = live;
+  const labelled = new Set(live.slice(0, 10).map((c) => c.city));
+  const idle = live.length === 0 ? CITIES : [];
   return (
     <svg viewBox={`0 0 ${MAP.w} ${MAP.h}`} className={cn("block w-full", className)} role="img" aria-label="Map of cities abroad with Run for Independence entries, linked to Banjul">
       <path d={LAND_DOTS} stroke={tone === "dark" ? "rgb(255 255 255 / 0.16)" : "rgb(11 27 58 / 0.14)"} strokeWidth="3.4" strokeLinecap="round" fill="none" />
+      {idle.map((c) => {
+        const p = project(c.lat, c.lng);
+        return <circle key={c.city} cx={p.x} cy={p.y} r={3} fill={tone === "dark" ? "rgb(255 255 255 / 0.35)" : "rgb(11 27 58 / 0.25)"} />;
+      })}
       {top.map((c, i) => {
         const p = project(c.lat, c.lng);
         const mx = (home.x + p.x) / 2;

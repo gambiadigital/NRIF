@@ -511,7 +511,7 @@ export function Checkbox({
         {tag && (
           <span
             className={cn(
-              "mt-1.5 block w-fit rounded-md px-1.5 py-0.5 font-label !text-[0.625rem]",
+              "mt-1.5 block w-fit rounded-md px-1.5 py-0.5 font-label !text-[0.6875rem]",
               tag === "required" ? "bg-ember-50 text-ember" : "bg-cobalt-50 text-cobalt",
             )}
           >

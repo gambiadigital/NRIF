@@ -1,62 +1,69 @@
 # Run for Independence 2027 · NRIF
 
-The registration platform for the National Research & Innovation Fund's Run for Independence, built as a complete
-clickable UI prototype from the storyboard *Registration from User POV*. Every frame in the storyboard has a working
-screen; there is no backend yet, so names, fees, times and payments are samples held in the browser.
+Registration, payments and race administration for the National Research & Innovation Fund's Run for Independence
+(Saturday 30 January 2027, Independence Stadium, Bakau, plus 10K and 5K virtual runs from anywhere).
 
-## Run it
+Built from the storyboard *Registration from User POV*: every frame is a working screen, backed by a Neon Postgres
+database.
+
+## Run it locally
 
 ```bash
 npm install
+cp .env.example .env.local   # then fill in the values
+node scripts/migrate.mjs     # creates the tables and the starting data; safe to re-run
 npm run dev
 ```
 
-Open http://localhost:3000. A navy **Prototype** pill floats over every screen: it lists all 25 screens grouped by
-journey, switches between the two personas (Fatou in Serrekunda, Lamin in London, or a blank form), and `[` / `]` step
-through the storyboard in order. `/flow` shows each storyboard frame beside the screen that answers it.
+## Environment variables
 
-## Screens
+| Name | What it is |
+| --- | --- |
+| `DATABASE_URL` | Neon pooled connection string (project NRIF, branch `production`) |
+| `SESSION_SECRET` | 32+ random characters; signs the admin and My entry cookies |
+| `ADMIN_SETUP_TOKEN` | One-time code for creating the first admin at `/admin/login` |
+| `CRON_SECRET` | Vercel sends it to `/api/cron/daily`; anything else is refused |
+| `WAVE_PAYMENT_LINK` | NRIF's Wave merchant payment link |
+| `NEXT_PUBLIC_SITE_URL` | The public address, used in text-message links |
+| `WAVE_API_KEY`, `WAVE_WEBHOOK_SECRET` | Optional. Wave Checkout API: makes Wave instant and confirms bookings automatically |
+| `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM` | Optional. Sends the texts |
+| `RESEND_API_KEY`, `EMAIL_FROM` | Optional. Sends the emails |
 
-| Journey | Route | Storyboard frame |
-| --- | --- | --- |
-| Landing page (video hero, countdown, events, race day, 62 Cities, steps, kit, FAQ) | `/` | 02 |
-| Landing from a share link (`?src=` and `?ref=`) | `/?src=instagram&ref=1047` | 01 |
-| Social post and printable poster with source-tagged QR | `/campaign` | 01 |
-| Step 1: where you live, then the event | `/register` | 03 |
-| Step 2: your details, emergency contact, race kit | `/register/details` | 04 |
-| Step 3: participants, guardians, team code, steps challenge | `/register/participants` | 05 |
-| Step 4: waiver and consents | `/register/waiver` | 06 |
-| Step 5: payment and donation | `/register/payment` | 07 |
-| Paying with Wave | `/register/wave` | 07 |
-| Payment pending with reference code | `/register/pending` | 08 |
-| Confirmation, bib pop-ups, share card | `/confirmation` | 10 |
-| Text and email | `/messages` | 11 |
-| Virtual confirmation and e-bib | `/confirmation/virtual` | 12 |
-| My entry (code sign-in, bibs, QR, kit, transfer) | `/my-entry` | — |
-| Upload a virtual run | `/my-entry/upload` | — |
-| E-certificate | `/certificate` | — |
-| Steps challenge fundraising page | `/steps/SC-1047` | — |
-| Help, waiver v1.0, refund and transfer policy | `/help` | — |
-| Admin: overview, payment matching, entries, bib ranges, messages, campaign links | `/admin/*` | 09 |
+## How it works
 
-## How it is built
+**Registration.** Five steps (where you live and the event, your details, who is running, waiver and consents,
+payment). The server re-checks everything: ages against each event's minimum, a lead booker of 18 or over, guardians
+for under 18s, the waiver version, team codes. It prices the booking from the database, not from the browser.
 
-- Next.js 16 (App Router, Cache Components), React 19, Tailwind CSS 4.
-- Radix primitives for dialogs, popovers, tabs and accordions; Motion for animation; Lenis for smooth scrolling on the
-  landing page; Phosphor icons; Sonner toasts; canvas-confetti; qrcode.react; html-to-image for the e-bib, share card and
-  certificate downloads.
-- Every form control is custom: phone fields format themselves (The Gambia: `87 701 2345`) and take pasted `+220…`
-  numbers, dates are typed as DD / MM / YYYY, and there is no native select or date picker.
-- Fonts are self-hosted variable fonts in `app/fonts`: Google Sans Flex for reading, Archivo (narrowed and italic, like
-  the logo) for the race voice, Google Sans Code for references and bib codes.
-- The booking lives in a Zustand store (`lib/store.ts`) saved to sessionStorage. Sample data, fees, bib ranges and the
-  admin ledger are in `lib/data.ts`; the waiver and policy text in `lib/content.ts`.
-- Photography and the hero clips were generated for this project and live in `public/media`. The 62 Cities map is a
-  dot matrix pre-computed from Natural Earth land (`lib/worldDots.ts`), so the page ships no map library.
+**Payment.** Every booking gets a reference such as `RFI-7Q4K` and a five-day hold. Payers use Wave (NRIF's payment
+link, QR or number), Yonna (QR or number), Ecobank (EMV QR or account 6240050636), or Remitly/ACE from abroad. Staff
+record each receipt in **Admin → Payments**; a receipt quoting a waiting reference with the full amount matches by
+itself, anything else is matched by hand. Matching runs `confirm_booking()` in Postgres, which marks the booking paid,
+issues the next bib in each event's range (virtual entries get a `V` prefix) and gives steps-challenge bookings their
+`SC-` code, all in one transaction. The payer's screen notices within seconds and shows their bibs.
 
-## What the backend needs to replace
+When Wave Checkout API keys arrive, set `WAVE_API_KEY` and `WAVE_WEBHOOK_SECRET` and point Wave's webhook at
+`/api/webhooks/wave`: each booking then gets its own checkout with the exact amount, and payment confirms itself.
 
-The grey "System" notes in the storyboard map to these seams in the code: source tags (`booking.source`), age category
-and under-18 checks (`lib/format.ts`), waiver version and acceptance time (`booking.consents`), reference codes and the
-five-day hold (`/register/pending`), payment matching and bib issue (`/admin/payments`, `/admin/bibs`), and the SMS and
-email templates with their 160-character limit (`lib/messages.ts`, `/admin/messages`).
+**Messages.** Texts and emails go into an outbox. Without a provider they wait as "queued" (visible in
+**Admin → Messages**); add Twilio and/or Resend and the queue sends. Templates are editable there, with a
+160-character counter.
+
+**Daily job.** `/api/cron/daily` (scheduled in `vercel.json`) releases unpaid places after five days, sends the day-3
+reminder, the race-week texts on 23 and 29 January, and pushes the outbox.
+
+**Participants.** My entry signs in with the booking reference and the phone number used to book. It shows bibs, the
+race-pack QR code, kit changes (until 9 January), place transfers, steps logging and, for virtual runners, uploading a
+run and the e-certificate once staff approve it.
+
+**Admin.** `/admin`, behind its own sign-in. The first account is created at `/admin/login` with the setup code;
+further accounts are added in **Settings**, along with contact details, social links, payment numbers, the fund goal and
+team codes. **Events and bibs** sets fees, start times and bib ranges.
+
+## Code map
+
+- `app/` pages; `app/api/` route handlers; `app/admin/(console)/` the signed-in admin screens.
+- `lib/server/` database access, bookings, sessions, messages and Wave (server only).
+- `db/schema.sql`, `db/seed.sql` the database; `scripts/migrate.mjs` applies both.
+- `lib/data.ts` the run's fixed facts and the look of each event; live fees come from the database.
+- `proxy.ts` keeps signed-out visitors away from `/admin`.

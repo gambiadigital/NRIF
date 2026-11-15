@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef } from "react";
+import { Suspense, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { motion } from "motion/react";
 import { toPng } from "html-to-image";
@@ -9,16 +10,51 @@ import { DownloadSimple, Printer, ShareNetwork } from "@phosphor-icons/react";
 import { SiteHeader } from "@/components/site/Header";
 import { Button } from "@/components/ui/button";
 import { Swoosh } from "@/components/brand";
-import { useBooking } from "@/lib/store";
+import { useBookingData, type ClientBooking } from "@/lib/booking-client";
+import { EntryGate } from "@/components/EntryGate";
 import { eventById } from "@/lib/data";
 
 /** The virtual finisher's certificate: landscape, printable, with the time they uploaded. */
 export default function CertificatePage() {
-  const b = useBooking();
+  return (
+    <Suspense fallback={null}>
+      <CertificateGate />
+    </Suspense>
+  );
+}
+
+function CertificateGate() {
+  const sp = useSearchParams();
+  const { data, error, loading } = useBookingData(null, null);
+  const p = data?.participants.find((x) => x.id === sp.get("p")) ?? data?.participants.find((x) => data.results?.some((r) => r.participant_id === x.id && r.status === "approved"));
+  const result = p && data?.results?.find((r) => r.participant_id === p.id && r.status === "approved");
+  if (!data || !p || !result)
+    return (
+      <>
+        <div className="no-print">
+          <SiteHeader />
+        </div>
+        <div className="pt-[var(--header-h)]">
+          <EntryGate loading={loading} error={data ? { status: 409, message: "Your certificate appears here once your virtual run has been checked and approved." } : error} />
+        </div>
+      </>
+    );
+  return <Certificate b={data} participantId={p.id} result={result} />;
+}
+
+const hms = (s: number) => {
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  return h ? `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}` : `${m}:${String(sec).padStart(2, "0")}`;
+};
+
+function Certificate({ b, participantId, result }: { b: ClientBooking; participantId: string; result: NonNullable<ClientBooking["results"]>[number] }) {
   const ref = useRef<HTMLDivElement>(null);
-  const lead = b.participants[0]!;
+  const lead = b.participants.find((x) => x.id === participantId)!;
   const ev = eventById(lead.eventId);
-  const bib = b.bibs[lead.id] ?? "V1213";
+  const bib = lead.bib ?? "";
+  const place = b.city?.split(",")[0] || b.town || "abroad";
 
   async function save() {
     if (!ref.current) return;
@@ -44,7 +80,7 @@ export default function CertificatePage() {
             <p className="font-label text-cobalt">E-certificate</p>
             <h1 className="mt-3 font-race text-[clamp(2.4rem,6vw,3.8rem)] text-navy">Well run, {lead.fullName.split(" ")[0]}</h1>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button variant="line" icon={<Printer weight="bold" className="size-4" />} onClick={() => window.print()}>
               Print
             </Button>
@@ -57,7 +93,9 @@ export default function CertificatePage() {
           </div>
         </div>
 
-        <motion.div initial={{ opacity: 0, y: 30, rotateX: 12 }} animate={{ opacity: 1, y: 0, rotateX: 0 }} transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }} style={{ perspective: 1200 }}>
+        <p className="no-print mb-3 text-sm text-muted sm:hidden">Swipe to see the whole certificate, or download it.</p>
+        <div className="no-scrollbar -mx-4 overflow-x-auto px-4 pb-4 sm:mx-0 sm:overflow-visible sm:px-0 sm:pb-0">
+        <motion.div className="min-w-[40rem] sm:min-w-0" initial={{ opacity: 0, y: 30, rotateX: 12 }} animate={{ opacity: 1, y: 0, rotateX: 0 }} transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }} style={{ perspective: 1200 }}>
           <div ref={ref} className="@container relative aspect-[1.414/1] w-full overflow-hidden rounded-[1.25rem] bg-white shadow-pop ring-1 ring-line">
             <div className="absolute inset-[2.2cqw] rounded-[0.8cqw] border-[0.25cqw] border-sun/70" />
             <div className="absolute inset-[2.9cqw] rounded-[0.6cqw] border border-sun/40" />
@@ -72,13 +110,13 @@ export default function CertificatePage() {
               <p className="mt-[1.6cqw] text-[1.8cqw] text-muted">This certifies that</p>
               <p className="mt-[1cqw] font-race text-[7cqw] text-navy">{lead.fullName}</p>
               <p className="mt-[1.4cqw] max-w-[60cqw] text-[1.8cqw] leading-relaxed text-muted">
-                completed the <b className="text-navy">{ev.name}</b> of Run for Independence 2027 from <b className="text-navy">{b.contact.town || "abroad"}</b>, and grew NRIF&apos;s Endowment Fund for Gambian research and innovation.
+                completed the <b className="text-navy">{ev.name}</b> of Run for Independence 2027 from <b className="text-navy">{place}</b>, and grew NRIF&apos;s Endowment Fund for Gambian research and innovation.
               </p>
               <div className="mt-[3cqw] flex items-center gap-[5cqw]">
                 {[
-                  ["Distance", `${ev.km} km`],
-                  ["Time", "52:41"],
-                  ["Date", "24 Jan 2027"],
+                  ["Distance", `${result.distance_km} km`],
+                  ["Time", hms(result.duration_seconds)],
+                  ["Date", new Date(result.run_date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })],
                   ["E-bib", bib],
                 ].map(([k, v]) => (
                   <div key={k}>
@@ -95,6 +133,7 @@ export default function CertificatePage() {
             </div>
           </div>
         </motion.div>
+        </div>
       </main>
     </>
   );

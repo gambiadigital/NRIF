@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { PencilSimple, ShieldCheck, UserPlus, Footprints, UsersThree, Check, Trash, WarningCircle, Student, Buildings, Trophy } from "@phosphor-icons/react";
-import { EVENTS, RELATIONSHIPS, SHIRT_SIZES, TEAMS, eventById } from "@/lib/data";
+import { EVENTS, RELATIONSHIPS, SHIRT_SIZES, eventById } from "@/lib/data";
+import { api } from "@/lib/client";
 import { useBooking, lead, newParticipant, entryPrice, fmt, type Participant } from "@/lib/store";
 import { raceDayAge, initials } from "@/lib/format";
 import { Field, TextInput, DateField, Select, ChipGroup, Badge, Checkbox, PhoneField, RadioDot } from "@/components/ui/fields";
@@ -22,8 +23,27 @@ export default function Participants() {
   const [editing, setEditing] = useState<Participant | null>(null);
   const [isNew, setIsNew] = useState(false);
   const [code, setCode] = useState(b.teamCode);
-  const team = TEAMS[b.teamCode.toUpperCase()];
-  const codeTried = code.trim().length > 0 && code.toUpperCase() === b.teamCode.toUpperCase();
+  const [team, setTeam] = useState<{ name: string; kind: string; members: number } | null>(null);
+  const [teamState, setTeamState] = useState<"idle" | "checking" | "ok" | "unknown">(b.teamCode ? "ok" : "idle");
+
+  async function checkTeam() {
+    const c = code.trim();
+    if (!c) {
+      b.patch({ teamCode: "" });
+      setTeamState("idle");
+      return;
+    }
+    setTeamState("checking");
+    try {
+      const t = await api<{ code: string; name: string; kind: string; members: number }>(`/api/teams/${encodeURIComponent(c)}`);
+      setTeam(t);
+      b.patch({ teamCode: t.code });
+      setTeamState("ok");
+    } catch {
+      b.patch({ teamCode: "" });
+      setTeamState("unknown");
+    }
+  }
 
   return (
     <div>
@@ -104,27 +124,27 @@ export default function Participants() {
               onChange={(e) => setCode(e.target.value.toUpperCase())}
               placeholder="School or company code"
               className="font-mono uppercase tracking-wider"
-              onKeyDown={(e) => e.key === "Enter" && b.patch({ teamCode: code.trim() })}
+              onKeyDown={(e) => e.key === "Enter" && checkTeam()}
             />
-            <Button variant="ink" size="lg" className="h-12 shrink-0" onClick={() => b.patch({ teamCode: code.trim() })}>
-              Check
+            <Button variant="ink" size="lg" className="h-12 shrink-0" onClick={checkTeam} disabled={teamState === "checking"}>
+              {teamState === "checking" ? "Checking" : "Check"}
             </Button>
           </div>
           <AnimatePresence mode="wait">
-            {team && codeTried ? (
+            {teamState === "ok" && b.teamCode ? (
               <motion.div key="ok" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-3 flex items-center gap-3 rounded-2xl bg-forest-50 p-3 ring-1 ring-forest/15">
                 <span className="grid size-10 place-items-center rounded-xl bg-forest text-white">
-                  {team.kind === "school" ? <Student weight="fill" className="size-5" /> : team.kind === "club" ? <Trophy weight="fill" className="size-5" /> : <Buildings weight="fill" className="size-5" />}
+                  {team?.kind === "school" ? <Student weight="fill" className="size-5" /> : team?.kind === "club" ? <Trophy weight="fill" className="size-5" /> : <Buildings weight="fill" className="size-5" />}
                 </span>
                 <span className="flex-1">
-                  <span className="block text-sm font-bold text-navy">{team.name}</span>
-                  <span className="block text-xs text-muted">{team.members} runners so far · everyone in this booking joins</span>
+                  <span className="block text-sm font-bold text-navy">{team?.name ?? b.teamCode}</span>
+                  <span className="block text-xs text-muted">{team ? `${team.members} ${team.members === 1 ? "runner" : "runners"} so far · ` : ""}everyone in this booking joins</span>
                 </span>
                 <Check weight="bold" className="size-5 text-forest" />
               </motion.div>
-            ) : b.teamCode && codeTried ? (
+            ) : teamState === "unknown" ? (
               <motion.p key="no" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="mt-3 flex items-center gap-1.5 text-sm font-medium text-ember">
-                <WarningCircle weight="fill" className="size-4" /> We do not recognise that code. Try GSS-2027 or NRIF-STAFF.
+                <WarningCircle weight="fill" className="size-4" /> We do not recognise that code. Check it with your organiser.
               </motion.p>
             ) : null}
           </AnimatePresence>
@@ -226,7 +246,7 @@ function ParticipantEditor({
         </div>
       }
     >
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="Full name" required error={tried ? errs.name || undefined : undefined} className="sm:col-span-2">
           <TextInput value={p.fullName} onChange={(e) => set({ fullName: e.target.value })} placeholder="Awa Jallow" autoFocus />
         </Field>
@@ -271,7 +291,7 @@ function ParticipantEditor({
               <AnimatePresence initial={false}>
                 {!p.guardianIsLead && (
                   <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                    <div className="grid gap-3 pt-4 sm:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-3 pt-4 sm:grid-cols-2">
                       <Field label="Guardian's name" required>
                         <TextInput value={p.guardian.name} onChange={(e) => set({ guardian: { ...p.guardian, name: e.target.value } })} />
                       </Field>
@@ -290,7 +310,7 @@ function ParticipantEditor({
         )}
       </AnimatePresence>
 
-      <div className="mt-5 grid gap-4 sm:grid-cols-[1fr_11rem]">
+      <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-[1fr_11rem]">
         <Field label="T-shirt size" required error={tried ? errs.size || undefined : undefined}>
           <ChipGroup value={p.shirt || null} onChange={(v) => set({ shirt: v })} options={SHIRT_SIZES.map((s) => ({ value: s, label: s }))} />
         </Field>

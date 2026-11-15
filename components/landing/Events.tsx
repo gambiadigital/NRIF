@@ -5,7 +5,8 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowRight, Clock, GlobeHemisphereWest, House, Users } from "@phosphor-icons/react";
-import { CURRENCIES, EVENTS, type Currency, type RaceEvent, type Residence } from "@/lib/data";
+import { CURRENCIES, type Currency, type RaceEvent, type Residence } from "@/lib/data";
+import { useLiveEvents } from "@/lib/client";
 import { money, suggested } from "@/lib/format";
 import { useBooking } from "@/lib/store";
 import { Segmented, Badge } from "@/components/ui/fields";
@@ -24,14 +25,14 @@ export function Events() {
   const [res, setRes] = useState<Residence>("gambia");
   const [cur, setCur] = useState<Currency>("GBP");
   const router = useRouter();
+  const EVENTS = useLiveEvents().filter((e) => e.open !== false);
   const ordered = res === "abroad" ? [...EVENTS].sort((a, b) => (a.kind === b.kind ? 0 : a.kind === "virtual" ? -1 : 1)) : EVENTS;
 
   function choose(ev: RaceEvent) {
     const s = useBooking.getState();
-    if (s.persona !== "fatou" && res === "gambia") s.load("fatou");
-    if (res === "abroad" && s.persona !== "lamin") s.load("lamin");
+    s.setResidence(res);
+    if (res === "abroad") s.patch({ currency: cur });
     const after = useBooking.getState();
-    after.patch({ residence: res, currency: res === "gambia" ? "GMD" : cur });
     after.patchParticipant(after.participants[0]!.id, { eventId: ev.id });
     router.push("/register");
   }
@@ -86,7 +87,7 @@ export function Events() {
           </Reveal>
         </div>
 
-        <motion.div layout className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <motion.div layout className="mt-14 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <AnimatePresence mode="popLayout">
             {ordered.map((ev, i) => {
               const price = res === "gambia" ? money(ev.feeGMD) : money(suggested(ev.suggestedGBP, cur), cur);
@@ -168,7 +169,7 @@ export function Events() {
             })}
           </AnimatePresence>
         </motion.div>
-        <p className="mt-6 text-center text-sm text-faint">Sample fees. Final fees are confirmed by NRIF before registration opens.</p>
+        
       </div>
     </section>
   );

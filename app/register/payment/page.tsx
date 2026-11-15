@@ -3,9 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { HandHeart, Lightning, Hash, ShieldCheck } from "@phosphor-icons/react";
+import { toast } from "sonner";
+import { HandHeart, Lightning, Hash, ShieldCheck, WarningCircle } from "@phosphor-icons/react";
 import { PAYMENT_METHODS, type PaymentMethodId } from "@/lib/data";
-import { useBooking, lineItems, total, fmt, DONATION_PRESETS } from "@/lib/store";
+import { useBooking, lineItems, total, fmt, DONATION_PRESETS, saveBooking } from "@/lib/store";
+import { api, useSettings } from "@/lib/client";
 import { Badge, RadioDot, TextInput } from "@/components/ui/fields";
 import { Button } from "@/components/ui/button";
 import { StepFooter, StepTitle, SectionCard } from "@/components/register/Shell";
@@ -18,23 +20,53 @@ export default function Payment() {
   const items = lineItems(b);
   const presets = DONATION_PRESETS[b.currency] ?? DONATION_PRESETS.GMD!;
   const [other, setOther] = useState(b.donation > 0 && !presets.includes(b.donation));
-  const methods = (Object.keys(PAYMENT_METHODS) as PaymentMethodId[]).filter((k) => (b.residence === "gambia" ? PAYMENT_METHODS[k].home : k === "remit" || k === "bank"));
+  const methods = (Object.keys(PAYMENT_METHODS) as PaymentMethodId[]).filter((k) => (b.residence === "gambia" ? PAYMENT_METHODS[k].home : PAYMENT_METHODS[k].abroad));
   const method = methods.includes(b.payMethod) ? b.payMethod : methods[0]!;
-  const instant = PAYMENT_METHODS[method].mode === "instant";
+  const waveInstant = !!useSettings().data?.wave_checkout && b.currency === "GMD";
+  const instant = method === "wave" && waveInstant;
   const sum = total(b);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  function pay() {
+  async function pay() {
     setBusy(true);
-    setTimeout(() => {
-      if (instant) {
-        b.patch({ payMethod: method, reference: "WV-88231" });
-        router.push("/register/wave");
-      } else {
-        b.patch({ payMethod: method, status: "pending", reference: b.persona === "lamin" ? "RFI-7Q4K" : "RFI-3H2P" });
-        router.push("/register/pending");
-      }
-    }, 650);
+    setError(null);
+    try {
+      const s = useBooking.getState();
+      const created = await api<{ reference: string; key: string }>("/api/bookings", {
+        json: {
+          residence: s.residence,
+          city: s.city,
+          currency: s.currency,
+          participants: s.participants.map((p) => ({
+            fullName: p.fullName,
+            dob: p.dob,
+            gender: p.gender,
+            eventId: p.eventId,
+            shirt: p.shirt,
+            bibName: p.bibName,
+            guardianIsLead: p.guardianIsLead,
+            guardian: p.guardian,
+          })),
+          contact: s.contact,
+          teamCode: s.teamCode,
+          steps: s.steps,
+          consents: { waiver: s.consents.waiver, guardian: s.consents.guardian, photos: s.consents.photos, news: s.consents.news },
+          donation: s.donation,
+          payMethod: method,
+          source: s.source,
+          referral: s.referral,
+        },
+      });
+      saveBooking(created);
+      s.reset();
+      router.push(`/register/pending?ref=${created.reference}&k=${encodeURIComponent(created.key)}`);
+    } catch (e) {
+      const msg = (e as Error).message;
+      setError(msg);
+      toast.error("We could not save your booking", { description: msg });
+      setBusy(false);
+    }
   }
 
   return (
@@ -133,14 +165,14 @@ export default function Payment() {
               <RadioDot checked={on} />
               <PayMark id={k} />
               <span className="min-w-0 flex-1">
-                <span className="block font-bold text-navy">{k === "bank" && b.residence === "abroad" ? "International bank transfer" : m.name}</span>
+                <span className="block font-bold text-navy">{k === "ecobank" && b.residence === "abroad" ? "Ecobank, international transfer" : m.name}</span>
                 <span className="block text-sm text-muted">{m.note}</span>
-                <span className={cn("mt-1 flex items-center gap-1 text-xs font-bold sm:hidden", m.mode === "instant" ? "text-forest" : "text-[#9a6a06]")}>
-                  {m.mode === "instant" ? <Lightning weight="fill" className="size-3" /> : <Hash weight="bold" className="size-3" />}
-                  {m.mode === "instant" ? "Instant" : "Reference code"}
+                <span className={cn("mt-1 flex items-center gap-1 text-xs font-bold sm:hidden", (k === "wave" && waveInstant) ? "text-forest" : "text-[#9a6a06]")}>
+                  {(k === "wave" && waveInstant) ? <Lightning weight="fill" className="size-3" /> : <Hash weight="bold" className="size-3" />}
+                  {(k === "wave" && waveInstant) ? "Instant" : "Reference code"}
                 </span>
               </span>
-              {m.mode === "instant" ? (
+              {(k === "wave" && waveInstant) ? (
                 <Badge tone="forest" className="hidden sm:inline-flex" icon={<Lightning weight="fill" className="size-3" />}>
                   Instant
                 </Badge>
@@ -157,13 +189,20 @@ export default function Payment() {
       <p className="mt-5 flex items-start gap-2 text-[0.8125rem] text-muted">
         <ShieldCheck weight="fill" className="mt-0.5 size-4 shrink-0 text-forest" />
         {instant
-          ? "You approve the payment in the Wave app. Your bib numbers appear here the moment it lands."
-          : "You get a reference code to quote. Your place is held for 5 days while the payment reaches NRIF."}
+          ? "You approve the payment in the Wave app, and your bib numbers arrive the moment it lands."
+          : "Next you get a reference code to quote with your payment. Your place is held for 5 days while it reaches NRIF, and your bib numbers arrive by text and email once it is matched."}
       </p>
 
-      <StepFooter back="/register/waiver" note="Sample fees">
+      {error && (
+        <p className="mt-4 flex items-start gap-2 rounded-2xl bg-ember-50 p-4 text-sm font-medium text-ember-600 ring-1 ring-ember/15">
+          <WarningCircle weight="fill" className="mt-0.5 size-4 shrink-0" />
+          {error}
+        </p>
+      )}
+
+      <StepFooter back="/register/waiver">
         <Button size="lg" arrow={!busy} onClick={pay} disabled={busy}>
-          {busy ? "One moment…" : instant ? `Pay ${fmt(b, sum)} with Wave` : "Get my reference code"}
+          {busy ? "Saving your booking…" : instant ? `Pay ${fmt(b, sum)} with Wave` : "Get my reference"}
         </Button>
       </StepFooter>
     </div>

@@ -44,7 +44,7 @@ export default function Details() {
 
       <div className="space-y-4">
         <SectionCard title="You" icon={<UserCircle weight="bold" className="size-4" />}>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Full name" required htmlFor="name" error={err("name")} className="sm:col-span-2">
               <TextInput id="name" value={me.fullName} onChange={(e) => set({ fullName: e.target.value })} placeholder="As on your ID" autoComplete="name" invalid={!!err("name")} />
             </Field>
@@ -88,7 +88,7 @@ export default function Details() {
             )}
           </AnimatePresence>
 
-          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+          <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Phone" required htmlFor="phone" hint="We text your bib and reminders here" error={err("phone")}>
               <PhoneField id="phone" value={b.contact.phone} onChange={(v) => b.patchContact({ phone: v })} invalid={!!err("phone")} />
             </Field>
@@ -111,7 +111,7 @@ export default function Details() {
         </SectionCard>
 
         <SectionCard title="Emergency contact" tone="ember" icon={<ShieldPlus weight="fill" className="size-4" />} aside={<span className="text-xs text-muted">For the medical team</span>}>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Name" required htmlFor="ename" error={err("eName")}>
               <TextInput id="ename" value={b.contact.emergency.name} onChange={(e) => b.patchContact({ emergency: { ...b.contact.emergency, name: e.target.value } })} placeholder="Someone not running" invalid={!!err("eName")} />
             </Field>
@@ -125,7 +125,7 @@ export default function Details() {
         </SectionCard>
 
         <SectionCard title="Race kit" icon={<TShirt weight="bold" className="size-4" />} aside={<SizeGuide />}>
-          <div className="grid gap-6 sm:grid-cols-[1fr_13rem] sm:items-start">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-[1fr_13rem] sm:items-start">
             <div className="space-y-5">
               <Field label="T-shirt size" required error={err("size")}>
                 <ChipGroup value={me.shirt || null} onChange={(v) => set({ shirt: v })} options={SHIRT_SIZES.map((s) => ({ value: s, label: s }))} />
@@ -174,7 +174,7 @@ export default function Details() {
 function SizeGuide() {
   return (
     <Popover.Root>
-      <Popover.Trigger className="flex items-center gap-1.5 text-[0.8125rem] font-semibold text-forest hover:underline">
+      <Popover.Trigger className="-my-2 flex items-center gap-1.5 rounded-full px-2 py-2 text-[0.8125rem] font-semibold text-forest hover:bg-forest-50">
         <Ruler weight="bold" className="size-4" />
         Size guide
       </Popover.Trigger>

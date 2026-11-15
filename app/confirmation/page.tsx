@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "motion/react";
 import { toast } from "sonner";
 import { ShareNetwork, CalendarPlus, ChatCircleText, Package, Footprints, Copy, CaretRight, UserCircle, CheckCircle } from "@phosphor-icons/react";
-import { useBooking, lineItems, total, fmt } from "@/lib/store";
 import { RUN, eventById } from "@/lib/data";
+import { money } from "@/lib/format";
+import { useBookingData } from "@/lib/booking-client";
+import { EntryGate } from "@/components/EntryGate";
 import { Bib } from "@/components/Bib";
 import { Button } from "@/components/ui/button";
 import { ShareCard, ShareSheet } from "@/components/ShareCard";
@@ -16,26 +19,47 @@ import { cn } from "@/lib/cn";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
+export default function ConfirmationPage() {
+  return (
+    <Suspense fallback={<div className="min-h-[60vh]" />}>
+      <Confirmation />
+    </Suspense>
+  );
+}
+
 /** Frame 10: the bib pops up, the family's bibs fan out beneath it, and sharing is one tap away. */
-export default function Confirmation() {
-  const b = useBooking();
+function Confirmation() {
+  const sp = useSearchParams();
+  const ref = sp.get("ref");
+  const key = sp.get("k");
+  const router = useRouter();
+  const { data: b, error, loading } = useBookingData(ref, key);
   const [share, setShare] = useState(false);
-  const items = lineItems(b);
-  const lead = b.participants[0]!;
-  const leadBib = b.bibs[lead.id] ?? "1047";
-  const ev = eventById(lead.eventId);
-  const others = b.participants.slice(1);
-  const code = `SC-${leadBib.replace(/\D/g, "")}`;
+  const virtualOnly = !!b && b.participants.every((p) => eventById(p.eventId).kind === "virtual");
 
   useEffect(() => {
-    const t = setTimeout(celebrate, 650);
-    return () => clearTimeout(t);
-  }, []);
+    if (!b) return;
+    const q = ref && key ? `?ref=${ref}&k=${encodeURIComponent(key)}` : "";
+    if (b.status !== "paid") router.replace(`/register/pending${q}`);
+    else if (virtualOnly) router.replace(`/confirmation/virtual${q}`);
+    else {
+      const t = setTimeout(celebrate, 650);
+      return () => clearTimeout(t);
+    }
+  }, [b, ref, key, router, virtualOnly]);
+
+  if (!b || b.status !== "paid" || virtualOnly) return <EntryGate loading={loading} error={error} />;
+
+  const lead = b.participants[0]!;
+  const leadBib = lead.bib ?? "";
+  const ev = eventById(lead.eventId);
+  const others = b.participants.slice(1);
+  const code = b.stepsCode;
 
   return (
     <div className="relative overflow-hidden">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[38rem] bg-[radial-gradient(60%_60%_at_50%_0%,rgb(19_95_64/0.14),transparent_70%)]" />
-      <div className="relative mx-auto grid max-w-6xl gap-10 px-4 pb-32 pt-10 sm:px-6 lg:grid-cols-[1fr_24rem] lg:pt-16">
+      <div className="relative mx-auto grid grid-cols-1 max-w-6xl gap-10 px-4 pb-32 pt-10 sm:px-6 lg:grid-cols-[1fr_24rem] lg:pt-16">
         <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
           <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 380, damping: 16, delay: 0.1 }} className="grid size-16 place-items-center rounded-full bg-forest text-white shadow-[0_12px_30px_-10px_rgb(19_95_64/0.8)]">
             <svg viewBox="0 0 24 24" className="size-8" fill="none">
@@ -46,20 +70,20 @@ export default function Confirmation() {
             You&apos;re in, {lead.fullName.split(" ")[0] || "runner"}
           </motion.h1>
           <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.45 }} className="mt-2 text-lg text-muted">
-            Payment received · {fmt(b, total(b))} · {b.payMethod === "wave" ? "Wave" : "Matched"} {b.reference}
+            Payment received · {money(b.total, b.currency as never, { decimals: b.currency !== "GMD" })} · {b.reference}
           </motion.p>
 
           <div className="relative mt-10 w-full max-w-xl">
             <motion.div initial={{ opacity: 0, scale: 0.4, rotate: -14, y: 60 }} animate={{ opacity: 1, scale: 1, rotate: -2, y: 0 }} transition={{ type: "spring", stiffness: 160, damping: 14, delay: 0.55 }}>
               <Tilt max={6}>
-                <Bib number={leadBib} eventId={lead.eventId} name={lead.bibName || undefined} qr={`R4I:${leadBib}:${b.reference}`} />
+                <Bib number={leadBib} eventId={lead.eventId as never} name={lead.bibName || undefined} qr={`R4I:${b.reference}:${leadBib}`} />
               </Tilt>
             </motion.div>
             {others.length > 0 && (
               <div className="mt-6 grid grid-cols-2 gap-4 sm:gap-6">
                 {others.map((p, i) => (
                   <motion.div key={p.id} initial={{ opacity: 0, y: 40, rotate: i % 2 ? 10 : -10 }} animate={{ opacity: 1, y: 0, rotate: i % 2 ? 2.5 : -2.5 }} transition={{ type: "spring", stiffness: 160, damping: 16, delay: 1.1 + i * 0.15 }}>
-                    <Bib number={b.bibs[p.id] ?? String(7012 + i)} eventId={p.eventId} name={p.bibName || undefined} />
+                    <Bib number={p.bib ?? ""} eventId={p.eventId as never} name={p.bibName || undefined} />
                     <p className="mt-2 text-center text-sm font-semibold text-navy">
                       {p.fullName.split(" ")[0]} <span className="font-normal text-muted">· {eventById(p.eventId).name}</span>
                     </p>
@@ -69,7 +93,7 @@ export default function Confirmation() {
             )}
           </div>
 
-          {b.steps && (
+          {code && (
             <motion.button
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -89,7 +113,7 @@ export default function Confirmation() {
             </motion.button>
           )}
 
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.6 }} className="mt-8 grid w-full max-w-xl gap-3 sm:grid-cols-2">
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.6 }} className="mt-8 grid grid-cols-1 w-full max-w-xl gap-3 sm:grid-cols-2">
             <Button size="lg" icon={<ShareNetwork weight="bold" className="size-5" />} onClick={() => setShare(true)}>
               Share my run
             </Button>
@@ -113,8 +137,8 @@ export default function Confirmation() {
 
           <motion.ul initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.75 }} className="mt-8 w-full max-w-xl divide-y divide-line border-y border-line text-left">
             {[
-              { href: "/messages", icon: ChatCircleText, t: "Confirmation sent by text and email", s: "With a QR code for race-pack collection" },
-              { href: "/my-entry", icon: Package, t: `Race packs: ${RUN.racePacksShort}`, s: `10:00 to 17:00 at ${RUN.venue}. One person can collect for all ${items.length}.` },
+              { href: "/my-entry", icon: ChatCircleText, t: "Confirmation by text and email", s: "With a QR code for race-pack collection" },
+              { href: "/my-entry", icon: Package, t: `Race packs: ${RUN.racePacksShort}`, s: `10:00 to 17:00 at ${RUN.venue}.${b.participants.length > 1 ? ` One person can collect for all ${b.participants.length}.` : ""}` },
               { href: "/my-entry", icon: UserCircle, t: "Manage your entry", s: `Change sizes or bib names until ${RUN.kitLock}` },
             ].map((x) => (
               <li key={x.t}>
@@ -136,7 +160,7 @@ export default function Confirmation() {
             <ShareCard distance={ev.distance} name={lead.fullName.split(" ")[0]!} bib={leadBib} />
             <div className="flex items-center justify-between px-1 pt-4">
               <span className="text-sm text-muted">Your share card</span>
-              <button onClick={() => setShare(true)} className="text-sm font-semibold text-forest hover:underline">
+              <button onClick={() => setShare(true)} className="-my-2 rounded-full px-3 py-2 text-sm font-semibold text-forest hover:bg-forest-50">
                 Share
               </button>
             </div>
@@ -145,7 +169,7 @@ export default function Confirmation() {
             <p className="font-label text-muted">What happens next</p>
             <ol className="mt-4 space-y-4">
               {[
-                { t: "Now", s: "Text and email with your bibs", done: true },
+                { t: "Now", s: "Your bibs are here and in My entry", done: true },
                 { t: "Sat 9 Jan", s: "Kit and bib names lock for printing", done: false },
                 { t: "Sat 23 Jan", s: "Reminder: 7 days to go", done: false },
                 { t: RUN.racePacksShort, s: "Collect race packs with your QR code", done: false },

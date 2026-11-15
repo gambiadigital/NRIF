@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { X, Lock, WhatsappLogo, Tag, Check } from "@phosphor-icons/react";
+import { X, Lock, Tag, Check } from "@phosphor-icons/react";
 import { NrifLockup, R4ILogo } from "@/components/brand";
 import { Badge } from "@/components/ui/fields";
 import { useBooking, lineItems, total, fmt } from "@/lib/store";
@@ -58,13 +58,15 @@ export function RegisterShell({ children }: { children: ReactNode }) {
             </div>
             <div className="grid grid-cols-5 gap-1.5">
               {STEPS.map((s, i) => (
-                <Link key={s.href} href={s.href} aria-label={s.label} className="group relative h-1.5 overflow-hidden rounded-full bg-sand">
+                <Link key={s.href} href={s.href} aria-label={s.label} className="group relative -my-2.5 flex h-6 items-center">
+                  <span className="relative h-1.5 w-full overflow-hidden rounded-full bg-sand">
                   <motion.span
                     initial={false}
                     animate={{ width: i < step ? "100%" : i === step ? "55%" : "0%" }}
                     transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
                     className={cn("absolute inset-y-0 left-0 rounded-full", i < step ? "bg-forest" : "bg-forest-400")}
                   />
+                  </span>
                 </Link>
               ))}
             </div>
@@ -80,7 +82,7 @@ export function RegisterShell({ children }: { children: ReactNode }) {
         )}
       </header>
 
-      <div className="mx-auto grid max-w-6xl gap-10 px-4 pb-40 pt-8 sm:px-6 sm:pt-12 lg:grid-cols-[minmax(0,1fr)_21rem] lg:pb-24">
+      <div className="mx-auto grid grid-cols-1 max-w-6xl gap-10 px-4 pb-40 pt-8 sm:px-6 sm:pt-12 lg:grid-cols-[minmax(0,1fr)_21rem] lg:pb-24">
         <AnimatePresence mode="wait" initial={false}>
           <motion.main key={pathname} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }} className="min-w-0">
             {children}
@@ -101,7 +103,7 @@ function Summary() {
         <div className="overflow-hidden rounded-[1.5rem] border border-line bg-white shadow-card">
           <div className="flex items-center justify-between border-b border-line px-5 py-4">
             <p className="font-bold text-navy">Your booking</p>
-            <Badge tone="sun">{b.residence === "gambia" ? "Sample fees" : "Sample amounts"}</Badge>
+            {b.residence === "abroad" && <Badge tone="cobalt">Suggested</Badge>}
           </div>
           <ul className="divide-y divide-line">
             <AnimatePresence initial={false}>
@@ -140,16 +142,12 @@ function Summary() {
           </p>
         </div>
 
-        <div className="flex items-center justify-between rounded-[1.25rem] px-1 text-[0.8125rem] text-muted">
-          <span className="flex items-center gap-1.5">
-            <Tag weight="bold" className="size-3.5" />
-            Came from <span className="rounded-md bg-sand px-1.5 py-0.5 font-mono text-[0.75rem] text-navy">?src={b.source}</span>
-          </span>
-          <a href="#" className="flex items-center gap-1.5 font-semibold text-forest hover:underline">
-            <WhatsappLogo weight="fill" className="size-4 text-[#25D366]" />
-            Need a hand?
-          </a>
-        </div>
+        {b.source && b.source !== "direct" && (
+          <p className="flex items-center gap-1.5 px-1 text-[0.8125rem] text-muted">
+            <Tag weight="bold" className="size-3.5 shrink-0" />
+            Came from <span className="truncate rounded-md bg-sand px-1.5 py-0.5 font-mono text-[0.75rem] text-navy">{b.source}</span>
+          </p>
+        )}
       </div>
     </aside>
   );
@@ -176,14 +174,14 @@ export function StepFooter({ children, back, note }: { children: ReactNode; back
       </div>
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white/95 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl lg:hidden">
         <div className="mx-auto flex max-w-xl items-center gap-4">
-          <div className="min-w-0">
+          <div className="shrink-0">
             <p className="text-xs text-muted">
               {count} {count === 1 ? "entry" : "entries"}
               {b.donation > 0 && " + donation"}
             </p>
             <p className="font-bib text-[1.6rem] leading-none text-navy">{fmt(b, total(b))}</p>
           </div>
-          <div className="ml-auto flex-1 [&>*]:w-full">{children}</div>
+          <div className="ml-auto min-w-0 flex-1 [&>*]:w-full">{children}</div>
         </div>
       </div>
     </>
