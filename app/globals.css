@@ -3,8 +3,9 @@
 /*
  * Run for Independence — design tokens.
  * Colours come from the two marks: the Run4Independence logo (navy wordmark, flag red, blue, green)
- * and the NRIF tree (forest green #135F40, indigo #2A3181, coral #D34E3F). Sun gold is the storyboard's
- * Sign up colour. The ground is a warm paper, never pure white, so white cards lift off it.
+ * and the NRIF tree (forest green #135F40, indigo #2A3181, coral #D34E3F). NRIF's brand rule: accents come from the
+ * Gambian flag (red, blue, green) or white, never yellow. Flag red is the Sign up colour, as on the logo's "4".
+ * The ground is a warm paper, never pure white, so white cards lift off it.
  */
 @theme {
   --color-navy: #0b1b3a;
@@ -40,11 +41,8 @@
   --color-cobalt-50: #eff0fa;
 
   --color-royal: #1f3c99;
-
-  --color-sun: #f2b233;
-  --color-sun-600: #dc9a17;
-  --color-sun-100: #fcebc4;
-  --color-sun-50: #fdf6e3;
+  /* A lighter flag blue that keeps 3:1 against both paper and navy, for focus rings. */
+  --color-royal-400: #4f74e0;
 
   --font-sans: var(--font-flex), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
@@ -82,8 +80,8 @@
     to { height: 0; opacity: 0; }
   }
   @keyframes pulse-ring {
-    0% { box-shadow: 0 0 0 0 rgb(242 178 51 / 0.55); }
-    100% { box-shadow: 0 0 0 14px rgb(242 178 51 / 0); }
+    0% { box-shadow: 0 0 0 0 rgb(215 20 26 / 0.5); }
+    100% { box-shadow: 0 0 0 14px rgb(215 20 26 / 0); }
   }
 }
 
@@ -106,7 +104,7 @@ body {
 }
 
 ::selection {
-  background: var(--color-sun);
+  background: var(--color-cobalt-100);
   color: var(--color-navy);
 }
 
@@ -190,7 +188,7 @@ html.lenis body {
 
 /* Focus that reads on paper and on navy. */
 :where(a, button, input, textarea, [role="button"], [role="radio"], [role="checkbox"], [role="tab"], [role="option"]):focus-visible {
-  outline: 2.5px solid var(--color-sun);
+  outline: 2.5px solid var(--color-royal-400);
   outline-offset: 2px;
   border-radius: 0.75rem;
 }

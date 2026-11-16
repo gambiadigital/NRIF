@@ -41,7 +41,7 @@ type Detail = {
   transfers: { id: string; new_name: string; new_phone: string; status: string; full_name: string }[];
 };
 
-const STATUS_TONE: Record<string, "forest" | "sun" | "neutral" | "ember"> = { paid: "forest", pending: "sun", released: "neutral", cancelled: "ember" };
+const STATUS_TONE: Record<string, "forest" | "cobalt" | "neutral" | "ember"> = { paid: "forest", pending: "cobalt", released: "neutral", cancelled: "ember" };
 const phone = (v: unknown) => {
   const [iso, digits] = String(v ?? "").split(":");
   return digits ? `${COUNTRY_CODES.find((c) => c.iso === iso)?.dial ?? ""} ${digits}` : String(v ?? "");

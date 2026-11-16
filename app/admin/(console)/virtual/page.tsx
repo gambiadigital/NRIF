@@ -76,7 +76,7 @@ function Rows({ rows, onOpen }: { rows: Row[]; onOpen: (r: Row) => void }) {
               {r.distance_km} km · {hms(r.duration_seconds)}
             </span>
             {r.has_image ? <ImageIcon className="size-4 text-muted" /> : <LinkSimple className="size-4 text-muted" />}
-            <Badge tone={r.status === "approved" ? "forest" : r.status === "rejected" ? "ember" : "sun"}>{r.status === "submitted" ? "To check" : r.status}</Badge>
+            <Badge tone={r.status === "approved" ? "forest" : r.status === "rejected" ? "ember" : "cobalt"}>{r.status === "submitted" ? "To check" : r.status}</Badge>
           </button>
         </li>
       ))}

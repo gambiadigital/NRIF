@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { LockSimple, Eye, EyeSlash, EnvelopeSimple } from "@phosphor-icons/react";
-import { NrifLockup } from "@/components/brand";
+import { CoBrand } from "@/components/brand";
 import { Button } from "@/components/ui/button";
 import { Field, TextInput } from "@/components/ui/fields";
 import { CodeInput } from "@/components/ui/CodeInput";
@@ -78,7 +78,7 @@ function AdminLogin() {
         <Image src="/media/start-line.webp" alt="" fill sizes="55vw" className="object-cover opacity-50" priority />
         <div className="absolute inset-0 bg-gradient-to-t from-navy via-navy/40 to-transparent" />
         <div className="absolute bottom-12 left-12 right-12 text-white">
-          <NrifLockup white className="h-12" />
+          <CoBrand reverse size="lg" />
           <p className="mt-6 font-race text-[4.2rem]">Run admin</p>
           <p className="mt-2 max-w-md text-white/70">Payments, entries, bibs and messages for Run for Independence 2027.</p>
         </div>
@@ -86,7 +86,7 @@ function AdminLogin() {
       <div className="flex items-center justify-center px-4 py-16 sm:px-6">
         <div className="w-full max-w-sm">
           <div className="lg:hidden">
-            <NrifLockup className="h-10" />
+            <CoBrand />
           </div>
           <AnimatePresence mode="wait">
             {stage === "email" && (

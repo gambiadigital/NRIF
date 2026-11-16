@@ -18,7 +18,7 @@ export const ShareCard = forwardRef<HTMLDivElement, { distance: string; name: st
       <div className="absolute inset-0 bg-[radial-gradient(120%_80%_at_100%_0%,rgb(75_84_176/0.9),transparent_60%)]" />
       <Swoosh className="absolute -bottom-[14%] -right-[10%] w-[78%] opacity-95" />
       <div className="relative flex h-full flex-col">
-        <p className="font-label !text-[0.65rem] text-sun">Run for Independence 2027</p>
+        <p className="font-label !text-[0.65rem] text-white/80">Run for Independence 2027</p>
         <p className="mt-[4%] max-w-[86%] font-race text-[clamp(1.7rem,5.4vw,2.6rem)] leading-[0.92]">
           I&apos;m running the {distance}
           {virtual ? " virtual" : ""} for NRIF&apos;s Endowment Fund. Join me.

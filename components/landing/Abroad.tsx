@@ -9,6 +9,7 @@ import { useBooking } from "@/lib/store";
 import { CitiesMap } from "@/components/CitiesMap";
 import { Reveal, RiseLines, CountUp } from "@/components/ui/motion";
 import { Button } from "@/components/ui/button";
+import { FlagBars } from "@/components/brand";
 
 export function Abroad() {
   const router = useRouter();
@@ -21,10 +22,10 @@ export function Abroad() {
         <div className="grid grid-cols-1 gap-12 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
           <div>
             <Reveal>
-              <p className="font-label text-sun">From abroad</p>
+              <p className="flex items-center gap-2.5 font-label text-white"><FlagBars small />From abroad</p>
             </Reveal>
             <h2 className="mt-5 font-race text-[clamp(2.8rem,7vw,6.2rem)] text-white">
-              <RiseLines lines={["62 Cities,", <span key="o" className="text-sun">One Gambia</span>]} />
+              <RiseLines lines={[<span key="c" className="text-white/45">62 Cities,</span>, "One Gambia"]} />
             </h2>
             <Reveal delay={0.1}>
               <p className="mt-6 max-w-lg text-lg leading-relaxed text-white/70">
@@ -42,7 +43,7 @@ export function Abroad() {
               </div>
               <div className="mb-2 h-16 w-px bg-white/15" />
               <div className="mb-1">
-                <p className="font-bib text-[2.6rem] leading-none text-sun">
+                <p className="font-bib text-[2.6rem] leading-none text-white">
                   <CountUp key={stats?.abroadEntries ?? 0} to={stats?.abroadEntries ?? 0} />
                 </p>
                 <p className="mt-1 text-sm text-white/55">entries from abroad</p>
@@ -50,7 +51,7 @@ export function Abroad() {
             </Reveal>
             <Reveal delay={0.2} className="mt-8">
               <Button
-                variant="sun"
+                variant="flag"
                 size="lg"
                 arrow
                 icon={<GlobeHemisphereWest weight="bold" className="size-5" />}
@@ -73,7 +74,7 @@ export function Abroad() {
               {top.map((c, i) => (
                 <Reveal key={c.city} delay={0.04 * i} className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 py-1.5 pl-3 pr-1.5 text-sm">
                   {c.city}
-                  <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs font-bold tabular text-sun">{c.n}</span>
+                  <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs font-bold tabular text-white">{c.n}</span>
                 </Reveal>
               ))}
             </div>
@@ -85,7 +86,7 @@ export function Abroad() {
             <Image src="/media/london-virtual.webp" alt="A Gambian runner checking his watch on a rainy London riverside at dawn" fill sizes="(min-width: 1024px) 55vw, 100vw" className="object-cover" />
             <div className="absolute inset-0 bg-gradient-to-r from-navy/90 via-navy/40 to-transparent" />
             <div className="relative flex h-full max-w-sm flex-col justify-end p-7">
-              <p className="font-label text-sun">10K and 5K virtual</p>
+              <p className="flex items-center gap-2.5 font-label text-white"><FlagBars small />10K and 5K virtual</p>
               <p className="mt-3 text-2xl font-bold leading-snug">Can&apos;t be in Bakau on the day? Run your own route, wherever you are.</p>
               <p className="mt-3 text-sm text-white/65">E-bibs start with a V</p>
             </div>

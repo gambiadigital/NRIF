@@ -6,7 +6,7 @@ const BAND: Record<RaceEvent["accent"], { band: string; text: string }> = {
   ember: { band: "bg-ember", text: "text-ember" },
   royal: { band: "bg-royal", text: "text-royal" },
   forest: { band: "bg-forest", text: "text-forest" },
-  sun: { band: "bg-sun", text: "text-[#b07a0c]" },
+  navy: { band: "bg-navy", text: "text-navy" },
   cobalt: { band: "bg-cobalt", text: "text-cobalt" },
 };
 
@@ -32,7 +32,6 @@ export function Bib({
   const ev = eventById(eventId);
   const tone = BAND[ev.accent];
   const label = ev.kind === "virtual" ? `${ev.distance} Virtual` : ev.id === "heritage" ? "Heritage walk" : ev.id === "21k" ? "Half marathon" : ev.distance;
-  const dark = ev.accent === "sun";
   return (
     <div className={cn("@container w-full", className)}>
       <div
@@ -43,7 +42,7 @@ export function Bib({
       >
         {/* paper fibre */}
         <div className="absolute inset-0 opacity-[0.5] [background:repeating-linear-gradient(115deg,transparent_0_3px,rgb(11_27_58/0.012)_3px_4px)]" />
-        <div className={cn("relative flex h-[19%] items-center justify-between px-[6cqw]", tone.band, dark ? "text-navy" : "text-white")}>
+        <div className={cn("relative flex h-[19%] items-center justify-between px-[6cqw]", tone.band, "text-white")}>
           <span className="font-race text-[5.6cqw] not-italic tracking-[0.02em] [font-variation-settings:'wdth'_80]">Run for Independence</span>
           <span className="font-mono text-[3.6cqw] font-semibold opacity-80">2027</span>
         </div>

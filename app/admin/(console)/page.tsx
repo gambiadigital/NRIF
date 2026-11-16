@@ -22,8 +22,8 @@ type Overview = {
   activity: { at: string; actor: string; text: string }[];
 };
 
-const EVENT_COLOURS: Record<string, string> = { "21k": "#d7141a", "10k": "#1f3c99", "5k": "#135f40", heritage: "#f2b233", "10k-virtual": "#2a3181", "5k-virtual": "#4b54b0" };
-const SOURCE_COLOURS = ["#2a3181", "#1f3c99", "#135f40", "#0b1b3a", "#f2b233", "#5d6577", "#cfc8b9"];
+const EVENT_COLOURS: Record<string, string> = { "21k": "#d7141a", "10k": "#1f3c99", "5k": "#135f40", heritage: "#0b1b3a", "10k-virtual": "#2a3181", "5k-virtual": "#4b54b0" };
+const SOURCE_COLOURS = ["#2a3181", "#1f3c99", "#135f40", "#0b1b3a", "#d7141a", "#5d6577", "#cfc8b9"];
 
 function greeting() {
   const h = new Date().getHours();
@@ -42,7 +42,7 @@ export default function Overview() {
   const days = clock?.days ?? 0;
   const kpis = [
     { label: "Paid entries", value: k?.entries ?? 0, delta: `${k?.today ?? 0} booked in the last day`, icon: Users, tone: "text-forest bg-forest-50", f: (n: number) => Math.round(n).toLocaleString("en-GB") },
-    { label: "Raised for the fund", value: k?.raised ?? 0, delta: `${k ? ((k.raised / k.goal) * 100).toFixed(1) : 0}% of GMD ${((k?.goal ?? RUN.goal) / 1e6).toFixed(0)}m`, icon: CurrencyCircleDollar, tone: "text-[#a77208] bg-sun-50", f: (n: number) => `GMD ${Math.round(n).toLocaleString("en-GB")}` },
+    { label: "Raised for the fund", value: k?.raised ?? 0, delta: `${k ? ((k.raised / k.goal) * 100).toFixed(1) : 0}% of GMD ${((k?.goal ?? RUN.goal) / 1e6).toFixed(0)}m`, icon: CurrencyCircleDollar, tone: "text-ember bg-ember-50", f: (n: number) => `GMD ${Math.round(n).toLocaleString("en-GB")}` },
     { label: "Waiting for payment", value: k?.pending ?? 0, delta: `${k?.pending_late ?? 0} past day 3`, icon: HourglassMedium, tone: "text-cobalt bg-cobalt-50", f: (n: number) => String(Math.round(n)) },
     { label: "Unmatched receipts", value: k?.unmatched ?? 0, delta: "Need matching by hand", icon: WarningCircle, tone: "text-ember bg-ember-50", f: (n: number) => String(Math.round(n)) },
   ];

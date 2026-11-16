@@ -111,7 +111,7 @@ export default function Campaigns() {
                 <FlagBars />
               </div>
               <R4ILogo reverse className="mt-[10cqw] w-[78cqw]" />
-              <p className="mt-[6cqw] font-race text-[9cqw] text-sun">{RUN.tagline}</p>
+              <p className="mt-[6cqw] font-race text-[9cqw] text-white">{RUN.tagline}</p>
               <p className="mt-[2cqw] text-[3.6cqw] text-white/85">
                 {RUN.dateLong}
                 <br />

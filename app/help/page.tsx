@@ -6,6 +6,7 @@ import { MagnifyingGlass, Plus, FileText, ArrowsLeftRight } from "@phosphor-icon
 import { ContactList, useContacts } from "@/components/site/Contact";
 import { SiteHeader } from "@/components/site/Header";
 import { SiteFooter } from "@/components/site/Footer";
+import { FlagBars } from "@/components/brand";
 import { FAQS } from "@/lib/data";
 import { WAIVER, POLICY } from "@/lib/content";
 
@@ -18,7 +19,7 @@ export default function Help() {
       <main className="pt-[var(--header-h)]">
         <section className="bg-navy px-4 pb-16 pt-14 text-white sm:px-6">
           <div className="mx-auto max-w-4xl">
-            <p className="font-label text-sun">Help</p>
+            <p className="flex items-center gap-2.5 font-label text-white"><FlagBars small />Help</p>
             <h1 className="mt-3 font-race text-[clamp(3rem,9vw,6rem)]">How can we help?</h1>
             <div className="relative mt-8 max-w-xl">
               <MagnifyingGlass className="absolute left-5 top-1/2 size-5 -translate-y-1/2 text-white/50" />
@@ -26,7 +27,7 @@ export default function Help() {
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Search: children, refunds, race packs…"
-                className="h-14 w-full rounded-full border border-white/15 bg-white/10 pl-14 pr-5 text-white outline-none backdrop-blur placeholder:text-white/45 focus:border-sun"
+                className="h-14 w-full rounded-full border border-white/15 bg-white/10 pl-14 pr-5 text-white outline-none backdrop-blur placeholder:text-white/45 focus:border-white/60"
               />
             </div>
           </div>

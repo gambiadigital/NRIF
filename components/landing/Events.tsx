@@ -17,7 +17,7 @@ const ACCENT: Record<RaceEvent["accent"], string> = {
   ember: "bg-ember",
   royal: "bg-royal",
   forest: "bg-forest",
-  sun: "bg-sun",
+  navy: "bg-navy",
   cobalt: "bg-cobalt",
 };
 

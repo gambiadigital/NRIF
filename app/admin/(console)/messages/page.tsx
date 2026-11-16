@@ -60,8 +60,8 @@ export default function AdminMessages() {
       />
 
       {p && (!p.sms || !p.email) && (
-        <div className="mb-6 flex items-start gap-3 rounded-2xl bg-sun-50 p-4 text-sm text-navy ring-1 ring-sun/40">
-          <Info weight="fill" className="mt-0.5 size-5 shrink-0 text-[#a77208]" />
+        <div className="mb-6 flex items-start gap-3 rounded-2xl bg-cobalt-50 p-4 text-sm text-navy ring-1 ring-cobalt/15">
+          <Info weight="fill" className="mt-0.5 size-5 shrink-0 text-cobalt" />
           <span>
             {!p.sms && !p.email ? "No SMS or email provider is connected yet, " : !p.sms ? "No SMS provider is connected yet, " : "No email provider is connected yet, "}
             so those messages wait in the queue ({m.data?.counts?.queued ?? 0} now). Participants still see everything on screen and in My entry. Connect Twilio for SMS and Resend for email in the deployment settings and the queue sends.
@@ -98,7 +98,7 @@ export default function AdminMessages() {
               />
               <div className="mt-3 flex items-center gap-3">
                 <div className="h-2 flex-1 overflow-hidden rounded-full bg-sand">
-                  <motion.div animate={{ width: `${Math.min(100, (len / 160) * 100)}%` }} className={cn("h-full rounded-full", len > 160 ? "bg-ember" : len > 140 ? "bg-sun" : "bg-forest")} />
+                  <motion.div animate={{ width: `${Math.min(100, (len / 160) * 100)}%` }} className={cn("h-full rounded-full", len > 160 ? "bg-ember" : len > 140 ? "bg-coral" : "bg-forest")} />
                 </div>
                 <span className={cn("font-mono text-sm font-semibold", len > 160 ? "text-ember" : "text-navy")}>{len}/160</span>
               </div>

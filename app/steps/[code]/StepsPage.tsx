@@ -53,7 +53,7 @@ export function StepsPage({ code }: { code: string }) {
             <div className="h-64 animate-pulse rounded-[2rem] bg-sand" />
           ) : (
             <div className="rounded-[1.75rem] border border-line bg-white p-8 text-center shadow-card">
-              <WarningCircle weight="duotone" className="mx-auto size-12 text-sun-600" />
+              <WarningCircle weight="duotone" className="mx-auto size-12 text-cobalt" />
               <h1 className="mt-4 text-2xl font-bold text-navy">We could not find {code}</h1>
               <p className="mt-2 text-muted">{error ?? "Check the code with the runner."}</p>
               <Link href="/" className="mt-6 inline-flex h-11 items-center rounded-full bg-forest px-6 font-semibold text-white">
@@ -87,15 +87,15 @@ export function StepsPage({ code }: { code: string }) {
     <>
       <SiteHeader />
       <main className="pt-[var(--header-h)]">
-        <section className="relative overflow-hidden bg-sun">
-          <Footprints weight="fill" className="absolute -right-10 -top-10 size-72 rotate-12 text-white/25" />
+        <section className="relative overflow-hidden bg-royal text-white">
+          <Footprints weight="fill" className="absolute -right-10 -top-10 size-72 rotate-12 text-white/10" />
           <div className="relative mx-auto grid max-w-6xl grid-cols-1 items-end gap-8 px-4 pt-12 sm:px-6 lg:grid-cols-[1fr_22rem]">
             <div className="pb-12">
-              <p className="flex items-center gap-2 font-label text-navy">
+              <p className="flex items-center gap-2 font-label text-white">
                 <Footprints weight="fill" className="size-4" /> Steps challenge · {data.code}
               </p>
-              <h1 className="mt-4 font-race text-[clamp(2.8rem,8vw,5.6rem)] text-navy">{data.first} is stepping up for Gambian research</h1>
-              <p className="mt-4 max-w-xl text-lg text-navy/75">
+              <h1 className="mt-4 font-race text-[clamp(2.8rem,8vw,5.6rem)] text-white">{data.first} is stepping up for Gambian research</h1>
+              <p className="mt-4 max-w-xl text-lg text-white/80">
                 {data.first} is in the {data.event} on 30 January{data.others > 0 ? `, with ${data.others} more in the same booking` : ""}. Every gift goes to NRIF&apos;s Endowment Fund.
               </p>
             </div>
@@ -132,7 +132,7 @@ export function StepsPage({ code }: { code: string }) {
                   {data.week.map((d, i) => (
                     <div key={d.day} className="flex flex-col items-center gap-1.5">
                       <div className="flex h-24 w-full items-end overflow-hidden rounded-lg bg-paper">
-                        <motion.div initial={{ height: 0 }} animate={{ height: `${(d.steps / maxDay) * 100}%` }} transition={{ delay: i * 0.06, duration: 0.8, ease: [0.16, 1, 0.3, 1] }} className="w-full rounded-lg bg-sun" />
+                        <motion.div initial={{ height: 0 }} animate={{ height: `${(d.steps / maxDay) * 100}%` }} transition={{ delay: i * 0.06, duration: 0.8, ease: [0.16, 1, 0.3, 1] }} className="w-full rounded-lg bg-royal" />
                       </div>
                       <span className="text-[0.6875rem] text-muted">{new Date(d.day).toLocaleDateString("en-GB", { weekday: "short" })}</span>
                     </div>
@@ -162,10 +162,10 @@ export function StepsPage({ code }: { code: string }) {
 
           <aside>
             <div className="sticky top-24 space-y-3 rounded-[1.75rem] bg-navy p-6 text-white">
-              <HandHeart weight="duotone" className="size-9 text-sun" />
+              <HandHeart weight="duotone" className="size-9 text-ember" />
               <p className="text-xl font-bold">Back {data.first}&apos;s steps</p>
               <p className="text-sm text-white/65">Pay with Wave or Yonna at home, or Remitly or ACE from abroad.</p>
-              <Button variant="sun" size="lg" block onClick={() => setGive(true)}>
+              <Button variant="flag" size="lg" block onClick={() => setGive(true)}>
                 Give to {data.code}
               </Button>
               <Button

@@ -14,7 +14,7 @@ import { Sheet } from "@/components/ui/sheet";
 import { StepFooter, StepTitle, SectionCard } from "@/components/register/Shell";
 import { cn } from "@/lib/cn";
 
-const AVATAR = ["bg-forest text-white", "bg-sun text-navy", "bg-cobalt text-white", "bg-ember text-white", "bg-navy text-white"];
+const AVATAR = ["bg-forest text-white", "bg-royal text-white", "bg-cobalt text-white", "bg-ember text-white", "bg-navy text-white"];
 
 export default function Participants() {
   const b = useBooking();
@@ -71,7 +71,7 @@ export default function Participants() {
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-bold text-navy">{p.fullName || "Name to add"}</span>
                       {p.isLead && <Badge tone="forest">You</Badge>}
-                      {minor && <Badge tone="sun">Under 18</Badge>}
+                      {minor && <Badge tone="cobalt">Under 18</Badge>}
                     </div>
                     <p className="mt-0.5 truncate text-sm text-muted">
                       {age !== null ? `Age ${age}` : "Date of birth to add"} · {ev.name}
@@ -152,7 +152,7 @@ export default function Participants() {
 
         <Checkbox checked={b.steps} onChange={(v) => b.patch({ steps: v })} className="p-5 shadow-card">
           <span className="flex items-start gap-3">
-            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-sun text-navy">
+            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-royal text-white">
               <Footprints weight="fill" className="size-5" />
             </span>
             <span>

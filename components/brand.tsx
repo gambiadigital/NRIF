@@ -31,6 +31,38 @@ export function NrifLockup({ white, className }: { white?: boolean; className?: 
   );
 }
 
+/** The NRIF tree on its own, for tight spaces such as the phone header. */
+export function NrifTree({ white, className }: { white?: boolean; className?: string }) {
+  return (
+    <Image
+      src={white ? "/brand/nrif-tree-white.svg" : "/brand/nrif-tree.svg"}
+      alt="National Research & Innovation Fund"
+      width={155}
+      height={162}
+      unoptimized
+      className={cn("h-9 w-auto select-none", className)}
+      draggable={false}
+    />
+  );
+}
+
+/**
+ * NRIF and Run4Independence together, split by a hairline: NRIF's ask is that the two marks always travel as a pair.
+ * Phones get the tree alone so the pair fits beside the Sign up button at 360px; `nav` also uses the tree from 1024px
+ * to 1280px, where the site header's links need the room.
+ */
+export function CoBrand({ reverse, priority, size = "md", nav, className }: { reverse?: boolean; priority?: boolean; size?: "md" | "lg"; nav?: boolean; className?: string }) {
+  const lg = size === "lg";
+  return (
+    <span className={cn("flex items-center", lg ? "gap-4 sm:gap-5" : "gap-2.5 sm:gap-3.5", className)}>
+      <NrifTree white={reverse} className={cn(lg ? "h-12" : "h-9", "sm:hidden", nav && "lg:block xl:hidden")} />
+      <NrifLockup white={reverse} className={cn("hidden sm:block", nav && "lg:hidden xl:block", lg ? "h-12" : "h-9 xl:h-10")} />
+      <span aria-hidden className={cn("w-px shrink-0", lg ? "h-12" : "h-8 sm:h-9", reverse ? "bg-white/30" : "bg-navy/15")} />
+      <R4ILogo reverse={reverse} priority={priority} className={lg ? "w-40 sm:w-44" : "w-[6.5rem] sm:w-[8rem] xl:w-[8.5rem]"} />
+    </span>
+  );
+}
+
 export function NrifStacked({ white, className }: { white?: boolean; className?: string }) {
   return (
     <Image
@@ -52,12 +84,13 @@ export function NrifSeal({ className }: { className?: string }) {
 }
 
 /** Red, blue and green bars with white gaps, the stripe under the logo. */
-export function FlagBars({ className }: { className?: string }) {
+export function FlagBars({ className, small }: { className?: string; small?: boolean }) {
+  const bar = cn("-skew-x-[24deg] rounded-[1px]", small ? "h-[3px] w-3" : "h-1 w-6");
   return (
-    <span className={cn("inline-flex items-center gap-1", className)} aria-hidden>
-      <span className="h-1 w-6 -skew-x-[24deg] rounded-[1px] bg-ember" />
-      <span className="h-1 w-6 -skew-x-[24deg] rounded-[1px] bg-royal" />
-      <span className="h-1 w-6 -skew-x-[24deg] rounded-[1px] bg-forest" />
+    <span className={cn("inline-flex shrink-0 items-center", small ? "gap-[3px]" : "gap-1", className)} aria-hidden>
+      <span className={cn(bar, "bg-ember")} />
+      <span className={cn(bar, "bg-royal")} />
+      <span className={cn(bar, "bg-forest")} />
     </span>
   );
 }

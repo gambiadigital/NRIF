@@ -12,21 +12,22 @@ import { Reveal, RiseLines, Marquee, Tilt } from "@/components/ui/motion";
 import { ButtonLink } from "@/components/ui/button";
 import { Countdown } from "@/components/Countdown";
 import { Bib } from "@/components/Bib";
+import { FlagBars } from "@/components/brand";
 
 export function Challenge() {
   const teams = useStats().data?.teams ?? [];
   return (
     <section className="py-24 sm:py-32">
       <div className="mx-auto grid grid-cols-1 max-w-[88rem] gap-4 px-4 sm:px-6 lg:grid-cols-2 lg:px-10">
-        <Reveal className="relative flex flex-col overflow-hidden rounded-[2rem] bg-sun p-7 text-navy sm:p-10">
+        <Reveal className="relative flex flex-col overflow-hidden rounded-[2rem] bg-royal p-7 text-white sm:p-10">
           <div className="relative z-10 max-w-md">
             <p className="font-label">The steps challenge</p>
             <h3 className="mt-4 font-race text-[clamp(2.6rem,5vw,4.4rem)]">Turn steps into research</h3>
-            <p className="mt-4 text-[1.0625rem] leading-relaxed text-navy/75">
+            <p className="mt-4 text-[1.0625rem] leading-relaxed text-white/80">
               Tick one box when you sign up and your bib number becomes a code like <b className="font-mono">SC-1047</b>. Friends and family give to it, wherever
               they are, and every step you log shows on your page.
             </p>
-            <ButtonLink href="/register" variant="ink" size="lg" arrow className="mt-7">
+            <ButtonLink href="/register" variant="white" size="lg" arrow className="mt-7">
               Sign up and take part
             </ButtonLink>
           </div>
@@ -106,7 +107,7 @@ export function Kit() {
               { icon: LockSimple, t: `Kit locks on ${RUN.kitLock}`, d: "Change your size or the name on your bib from My entry until then." },
             ].map((x, i) => (
               <Reveal key={x.t} delay={i * 0.06} className="flex items-start gap-4 rounded-[1.25rem] bg-white p-5">
-                <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-navy text-sun">
+                <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-navy text-white">
                   <x.icon weight="duotone" className="size-6" />
                 </span>
                 <span>
@@ -208,13 +209,13 @@ export function FinalCta() {
       <video src="/media/aerial.mp4" poster="/media/aerial-poster.webp" autoPlay muted loop playsInline preload="none" className="absolute inset-0 -z-10 size-full object-cover" aria-hidden />
       <div className="absolute inset-0 -z-10 bg-navy/65" />
       <div className="mx-auto flex max-w-[88rem] flex-col items-center px-4 text-center sm:px-6 lg:px-10">
-        <p className="font-label text-sun">{RUN.dateLong}</p>
+        <p className="flex items-center gap-2.5 font-label text-white"><FlagBars small />{RUN.dateLong}<FlagBars small /></p>
         <h2 className="mt-6 font-race text-[clamp(3.2rem,11vw,10rem)]">
           <RiseLines lines={["See you at", "the start line"]} />
         </h2>
         <Countdown className="mt-10" />
         <div className="mt-10 flex flex-wrap justify-center gap-3">
-          <ButtonLink href="/register" variant="sun" size="xl" arrow>
+          <ButtonLink href="/register" variant="flag" size="xl" arrow>
             Sign up
           </ButtonLink>
           <ButtonLink href="/my-entry" variant="glass" size="xl">

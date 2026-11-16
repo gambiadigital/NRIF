@@ -6,7 +6,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { X, Lock, Tag, Check } from "@phosphor-icons/react";
-import { NrifLockup, R4ILogo } from "@/components/brand";
+import { CoBrand } from "@/components/brand";
 import { Badge } from "@/components/ui/fields";
 import { useBooking, lineItems, total, fmt } from "@/lib/store";
 import { initials } from "@/lib/format";
@@ -20,7 +20,7 @@ export const STEPS = [
   { href: "/register/payment", label: "Payment", short: "Pay" },
 ];
 
-const AVATAR = ["bg-forest text-white", "bg-sun text-navy", "bg-cobalt text-white", "bg-ember text-white", "bg-navy text-white"];
+const AVATAR = ["bg-forest text-white", "bg-royal text-white", "bg-cobalt text-white", "bg-ember text-white", "bg-navy text-white"];
 
 export function RegisterShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -32,10 +32,8 @@ export function RegisterShell({ children }: { children: ReactNode }) {
     <div className="min-h-dvh bg-paper">
       <header className="sticky top-0 z-40 border-b border-line bg-white/90 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4 sm:px-6">
-          <Link href="/" className="flex items-center gap-3" aria-label="Run for Independence home">
-            <NrifLockup className="h-8 sm:h-9" />
-            <span className="hidden h-7 w-px bg-line sm:block" />
-            <R4ILogo className="hidden w-[5.5rem] sm:block" />
+          <Link href="/" className="shrink-0" aria-label="Run for Independence home">
+            <CoBrand />
           </Link>
           <div className="ml-auto flex items-center gap-2">
             <span className="hidden items-center gap-1.5 text-[0.8125rem] text-muted md:flex">

@@ -104,7 +104,7 @@ function Confirmation() {
               }}
               className="mt-8 flex items-center gap-3 rounded-full bg-cobalt-50 py-2 pl-2 pr-4 text-cobalt ring-1 ring-cobalt/15 transition-colors hover:bg-cobalt-100"
             >
-              <span className="grid size-8 place-items-center rounded-full bg-sun text-navy">
+              <span className="grid size-8 place-items-center rounded-full bg-cobalt text-white">
                 <Footprints weight="fill" className="size-4" />
               </span>
               <span className="text-sm font-semibold">Steps challenge code</span>

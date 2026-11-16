@@ -52,7 +52,7 @@ async function signOut() {
 function Who({ me }: { me: Me | null }) {
   return (
     <div className="flex items-center gap-3 rounded-2xl bg-white/5 p-3">
-      <span className="grid size-9 shrink-0 place-items-center rounded-full bg-sun text-sm font-bold text-navy">{me ? initials(me.name) : ""}</span>
+      <span className="grid size-9 shrink-0 place-items-center rounded-full bg-ember text-sm font-bold text-white">{me ? initials(me.name) : ""}</span>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold text-white">{me?.name ?? "…"}</p>
         <p className="truncate text-xs text-white/50">{me?.email}</p>

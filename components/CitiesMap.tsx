@@ -38,7 +38,7 @@ export function CitiesMap({ tone = "dark", className, labels = true, counts = []
             key={c.city}
             d={`M${home.x} ${home.y}Q${mx} ${my} ${p.x} ${p.y}`}
             fill="none"
-            stroke={i % 3 === 0 ? "#F2B233" : i % 3 === 1 ? (tone === "dark" ? "#8fa2ff" : "#2a3181") : "#34b37a"}
+            stroke={i % 3 === 0 ? (tone === "dark" ? "#ff5a5f" : "#D7141A") : i % 3 === 1 ? (tone === "dark" ? "#8fa2ff" : "#2a3181") : "#34b37a"}
             strokeWidth={1.4}
             strokeLinecap="round"
             opacity={0.85}
@@ -65,13 +65,13 @@ export function CitiesMap({ tone = "dark", className, labels = true, counts = []
         );
       })}
       <g>
-        <circle cx={home.x} cy={home.y} r="16" fill="#F2B233" opacity=".18">
+        <circle cx={home.x} cy={home.y} r="16" fill="#D7141A" opacity=".18">
           <animate attributeName="r" values="10;26;10" dur="2.6s" repeatCount="indefinite" />
           <animate attributeName="opacity" values=".35;0;.35" dur="2.6s" repeatCount="indefinite" />
         </circle>
-        <circle cx={home.x} cy={home.y} r="7" fill="#F2B233" stroke={tone === "dark" ? "#0b1b3a" : "#fff"} strokeWidth="2.5" />
+        <circle cx={home.x} cy={home.y} r="7" fill="#D7141A" stroke={tone === "dark" ? "#0b1b3a" : "#fff"} strokeWidth="2.5" />
         {labels && (
-          <text x={home.x - 12} y={home.y + 26} fontSize="14" fontWeight="800" fill={tone === "dark" ? "#F2B233" : "#0b1b3a"} fontFamily="var(--font-flex)" textAnchor="end">
+          <text x={home.x - 12} y={home.y + 26} fontSize="14" fontWeight="800" fill={tone === "dark" ? "#ffffff" : "#0b1b3a"} fontFamily="var(--font-flex)" textAnchor="end">
             Banjul
           </text>
         )}

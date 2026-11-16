@@ -6,7 +6,7 @@ import { cn } from "@/lib/cn";
 const VARIANTS = {
   primary:
     "bg-forest text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.18),0_1px_2px_rgb(11_27_58/0.2),0_8px_20px_-10px_rgb(19_95_64/0.7)] hover:bg-forest-700",
-  sun: "bg-sun text-navy shadow-[inset_0_1px_0_rgb(255_255_255/0.45),0_1px_2px_rgb(11_27_58/0.15),0_10px_24px_-12px_rgb(220_154_23/0.9)] hover:bg-[#f5bd4b]",
+  flag: "bg-ember text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.22),0_1px_2px_rgb(11_27_58/0.18),0_10px_24px_-12px_rgb(215_20_26/0.85)] hover:bg-ember-600",
   ink: "bg-navy text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.12),0_8px_20px_-12px_rgb(11_27_58/0.8)] hover:bg-navy-800",
   cobalt: "bg-cobalt text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.15),0_8px_20px_-12px_rgb(42_49_129/0.8)] hover:bg-cobalt-600",
   outline: "border border-forest/80 bg-white text-forest hover:bg-forest-50",

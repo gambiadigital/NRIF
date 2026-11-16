@@ -582,7 +582,6 @@ export function Switch({ checked, onChange, label }: { checked: boolean; onChang
 const TONES = {
   forest: "bg-forest-50 text-forest ring-forest/15",
   ember: "bg-ember-50 text-ember ring-ember/15",
-  sun: "bg-sun-50 text-[#9a6a06] ring-sun/30",
   cobalt: "bg-cobalt-50 text-cobalt ring-cobalt/15",
   navy: "bg-navy text-white ring-navy",
   neutral: "bg-sand text-muted ring-line",

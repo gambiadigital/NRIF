@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { ArrowRight, EnvelopeSimple, LockSimple, ArrowsLeftRight, PencilSimple, Footprints, Package, MapPin, CheckCircle, ShareNetwork, UserSwitch, SignOut, HourglassMedium, Plus } from "@phosphor-icons/react";
 import { SiteHeader } from "@/components/site/Header";
 import { Bib } from "@/components/Bib";
+import { FlagBars } from "@/components/brand";
 import { Countdown } from "@/components/Countdown";
 import { Button } from "@/components/ui/button";
 import { ChipGroup, CheckMark, TextInput, PhoneField, Field } from "@/components/ui/fields";
@@ -95,7 +96,7 @@ function SignIn({ onDone }: { onDone: () => void }) {
         <Image src="/media/finish.webp" alt="" fill sizes="50vw" className="object-cover" priority />
         <div className="absolute inset-0 bg-gradient-to-t from-navy via-navy/30 to-transparent" />
         <div className="absolute bottom-10 left-10 right-10 text-white">
-          <p className="font-label text-sun">My entry</p>
+          <p className="flex items-center gap-2.5 font-label text-white"><FlagBars small />My entry</p>
           <p className="mt-3 font-race text-[4rem]">Your bibs, your kit, your day</p>
         </div>
       </div>
@@ -245,7 +246,7 @@ function Dashboard({ b, reload }: { b: ClientBooking; reload: () => Promise<void
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mx-auto max-w-6xl px-4 pb-32 pt-10 sm:px-6">
       <div className="flex flex-col gap-6 rounded-[2rem] bg-navy p-6 text-white sm:p-8 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="font-label text-sun">Booking {b.reference}</p>
+          <p className="flex items-center gap-2.5 font-label text-white"><FlagBars small />Booking {b.reference}</p>
           <h1 className="mt-3 font-race text-[clamp(2.6rem,6vw,4rem)]">Hello, {lead.firstName}</h1>
           <p className="mt-1 text-white/65">
             {b.participants.length} {b.participants.length === 1 ? "entry" : "entries"} · {amount} {b.status === "paid" ? "paid" : "to pay"}
@@ -258,8 +259,8 @@ function Dashboard({ b, reload }: { b: ClientBooking; reload: () => Promise<void
       </div>
 
       {b.status !== "paid" && (
-        <div className="mt-6 flex flex-col gap-4 rounded-[1.5rem] bg-sun-50 p-5 ring-1 ring-sun/40 sm:flex-row sm:items-center">
-          <HourglassMedium weight="duotone" className="size-8 shrink-0 text-[#a77208]" />
+        <div className="mt-6 flex flex-col gap-4 rounded-[1.5rem] bg-cobalt-50 p-5 ring-1 ring-cobalt/15 sm:flex-row sm:items-center">
+          <HourglassMedium weight="duotone" className="size-8 shrink-0 text-cobalt" />
           <div className="flex-1">
             <p className="font-bold text-navy">{b.status === "pending" ? "Waiting for your payment" : "This place was released"}</p>
             <p className="text-sm text-muted">{b.status === "pending" ? `Send ${amount} with reference ${b.reference} by ${formatHold(b.holdUntil)}. Bibs arrive once it is matched.` : "No payment arrived within the hold. Book again, or contact NRIF if you have paid."}</p>
@@ -326,7 +327,7 @@ function Dashboard({ b, reload }: { b: ClientBooking; reload: () => Promise<void
                           {p.shirt && ` · ${p.shirt}`}
                         </p>
                       </div>
-                      <span className={cn("flex items-center gap-1 rounded-full px-2 py-1 text-[0.6875rem] font-bold uppercase tracking-wide", b.status === "paid" ? "bg-forest-50 text-forest" : "bg-sun-50 text-[#9a6a06]")}>
+                      <span className={cn("flex items-center gap-1 rounded-full px-2 py-1 text-[0.6875rem] font-bold uppercase tracking-wide", b.status === "paid" ? "bg-forest-50 text-forest" : "bg-cobalt-50 text-cobalt")}>
                         {b.status === "paid" ? <CheckCircle weight="fill" className="size-3.5" /> : <HourglassMedium weight="fill" className="size-3.5" />}
                         {b.status === "paid" ? "Paid" : "Pending"}
                       </span>
@@ -392,8 +393,8 @@ function Dashboard({ b, reload }: { b: ClientBooking; reload: () => Promise<void
         </Tabs.Content>
 
         <Tabs.Content value="kit" className="pt-8 outline-none">
-          <div className="mb-5 flex items-center gap-3 rounded-2xl bg-sun-50 px-5 py-4 text-sm text-navy ring-1 ring-sun/40">
-            <LockSimple weight="fill" className="size-5 text-[#a77208]" />
+          <div className="mb-5 flex items-center gap-3 rounded-2xl bg-cobalt-50 px-5 py-4 text-sm text-navy ring-1 ring-cobalt/15">
+            <LockSimple weight="fill" className="size-5 text-cobalt" />
             <span>{b.kitLocked ? "Kit choices are locked for printing." : <>Sizes and bib names lock on <b>{RUN.kitLock}</b> so printing can start.</>}</span>
           </div>
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -515,17 +516,17 @@ function StepsTab({ b, onLogged }: { b: ClientBooking; onLogged: () => Promise<v
   const link = typeof window !== "undefined" ? `${window.location.origin}/steps/${b.stepsCode}` : `/steps/${b.stepsCode}`;
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.3fr_1fr]">
-      <div className="rounded-[2rem] bg-sun p-6 sm:p-8">
-        <p className="flex items-center gap-2 font-label text-navy">
+      <div className="rounded-[2rem] bg-royal p-6 text-white sm:p-8">
+        <p className="flex items-center gap-2 font-label text-white">
           <Footprints weight="fill" className="size-4" /> Steps challenge · {b.stepsCode}
         </p>
-        <p className="mt-3 font-bib text-[4rem] leading-none text-navy">GMD {(b.stepsRaised ?? 0).toLocaleString("en-GB")}</p>
-        <p className="text-navy/70">
+        <p className="mt-3 font-bib text-[4rem] leading-none text-white">GMD {(b.stepsRaised ?? 0).toLocaleString("en-GB")}</p>
+        <p className="text-white/75">
           given by {b.stepsSupporters ?? 0} {b.stepsSupporters === 1 ? "supporter" : "supporters"} · {(b.stepsTotal ?? 0).toLocaleString("en-GB")} steps logged
         </p>
         <div className="mt-6 flex flex-wrap gap-2">
           <Button
-            variant="ink"
+            variant="white"
             size="lg"
             icon={<ShareNetwork weight="bold" className="size-5" />}
             onClick={() => {
@@ -535,7 +536,7 @@ function StepsTab({ b, onLogged }: { b: ClientBooking; onLogged: () => Promise<v
           >
             Copy my page link
           </Button>
-          <Link href={`/steps/${b.stepsCode}`} className="flex h-[3.25rem] items-center justify-center rounded-full bg-white/60 px-6 font-semibold text-navy hover:bg-white">
+          <Link href={`/steps/${b.stepsCode}`} className="flex h-[3.25rem] items-center justify-center rounded-full border border-white/30 px-6 font-semibold text-white hover:bg-white/10">
             Open my page
           </Link>
         </div>

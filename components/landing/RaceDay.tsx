@@ -30,7 +30,7 @@ const ROUTES = {
   },
   heritage: {
     label: "Walk",
-    color: "#F2B233",
+    color: "#0b1b3a",
     d: "M372 306 C366 290 372 276 388 272 C406 268 420 282 418 298 C416 314 398 322 384 318 C376 316 372 312 372 306",
     km: "1.965 km",
   },
@@ -54,7 +54,7 @@ function CourseMap() {
               onClick={() => setRoute(k)}
               className={cn("relative h-8 rounded-full px-3 text-[0.8125rem] font-bold transition-colors", route === k ? "text-white" : "text-muted hover:text-navy")}
             >
-              {route === k && <motion.span layoutId="route-pill" className="absolute inset-0 rounded-full" style={{ background: ROUTES[k].color === "#F2B233" ? "#0b1b3a" : ROUTES[k].color }} transition={{ type: "spring", stiffness: 500, damping: 36 }} />}
+              {route === k && <motion.span layoutId="route-pill" className="absolute inset-0 rounded-full" style={{ background: ROUTES[k].color }} transition={{ type: "spring", stiffness: 500, damping: 36 }} />}
               <span className="relative">{ROUTES[k].label}</span>
             </button>
           ))}
@@ -107,7 +107,7 @@ function CourseMap() {
         </g>
         <g transform="translate(372 306)">
           <circle r="11" fill="#0b1b3a" />
-          <text textAnchor="middle" y="4" fontSize="9" fontWeight="800" fill="#F2B233" fontFamily="var(--font-flex)">
+          <text textAnchor="middle" y="4" fontSize="9" fontWeight="800" fill="#ffffff" fontFamily="var(--font-flex)">
             S/F
           </text>
         </g>
@@ -172,7 +172,7 @@ export function RaceDay() {
               <Reveal delay={0.05} className="relative overflow-hidden rounded-[1.5rem] bg-navy p-6 text-white">
                 <Image src="/media/race-pack.webp" alt="" fill sizes="(min-width: 640px) 25vw, 100vw" className="object-cover opacity-35" />
                 <div className="relative">
-                  <Package weight="duotone" className="size-8 text-sun" />
+                  <Package weight="duotone" className="size-8 text-white" />
                   <p className="mt-6 text-lg font-bold">Race-pack collection</p>
                   <p className="mt-1 text-sm text-white/75">{RUN.racePacks} at {RUN.venue}. Show the QR code from your email.</p>
                 </div>

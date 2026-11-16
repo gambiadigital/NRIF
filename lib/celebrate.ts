@@ -1,6 +1,6 @@
 import confetti from "canvas-confetti";
 
-const FLAG = ["#D7141A", "#1F3C99", "#135F40", "#F2B233", "#ffffff"];
+const FLAG = ["#D7141A", "#1F3C99", "#135F40", "#ffffff"];
 
 /** A short burst in the flag's colours from both lower corners. */
 export function celebrate() {

@@ -101,7 +101,7 @@ export default function ChooseEvent() {
 
       <SectionCard className="mt-8 border-dashed bg-transparent shadow-none">
         <div className="flex items-start gap-3 text-sm text-muted">
-          <Sparkle weight="fill" className="mt-0.5 size-4 shrink-0 text-sun" />
+          <Sparkle weight="fill" className="mt-0.5 size-4 shrink-0 text-ember" />
           <p>
             Registering children or a team? Add them at step 3. One booking can hold the whole family, and under 18s can walk the Heritage walk at any age with
             you as their guardian.

@@ -81,7 +81,7 @@ export function Hero() {
             className="absolute inset-x-0 top-[calc(var(--header-h)+0.75rem)] z-20 flex justify-center px-4"
           >
             <div className="flex items-center gap-3 rounded-full bg-white/95 py-1.5 pl-1.5 pr-2 text-navy shadow-pop backdrop-blur">
-              <span className="grid size-9 place-items-center rounded-full bg-sun font-bold text-navy">{referrer.first[0]}</span>
+              <span className="grid size-9 place-items-center rounded-full bg-ember font-bold text-white">{referrer.first[0]}</span>
               <span className="text-[0.875rem] leading-tight">
                 <b>
                   {referrer.first} is running the {referrer.event}.
@@ -107,20 +107,22 @@ export function Hero() {
               <FlagBars />
               <span className="font-label text-white/90">NRIF Endowment Fund Run · {RUN.edition}</span>
             </motion.div>
-            <h1 className="font-race text-[clamp(3.5rem,11.4vw,11rem)] text-white">
+            <h1 className="font-race text-[min(14.4vw,3.6rem)] text-white sm:text-[clamp(3.5rem,11.4vw,11rem)]">
               {["Run for", "Independence"].map((l, i) => (
                 <span key={l} className="block overflow-hidden pb-[0.04em] pr-[0.1em]">
                   <motion.span className="block" initial={{ y: "108%" }} animate={{ y: "0%" }} transition={{ duration: 1.1, delay: 0.35 + i * 0.1, ease: EASE }}>
-                    {i === 1 ? (
-                      <>
-                        Independ<span className="text-sun">ence</span>
-                      </>
-                    ) : (
-                      l
-                    )}
+                    {l}
                   </motion.span>
                 </span>
               ))}
+              {/* The logo's underline: red, blue and green with white gaps, drawn in after the words land. */}
+              <motion.span
+                aria-hidden
+                initial={{ scaleX: 0 }}
+                animate={{ scaleX: 1 }}
+                transition={{ duration: 1, delay: 0.9, ease: EASE }}
+                className="mt-[0.05em] block h-[0.07em] w-full max-w-[6.2em] origin-left -skew-x-[24deg] flag-rule"
+              />
             </h1>
         </div>
         <div className="mt-6 grid grid-cols-1 items-end gap-8 lg:grid-cols-[1fr_auto] lg:gap-12">
@@ -140,18 +142,18 @@ export function Hero() {
               transition={{ delay: 0.85, duration: 0.9, ease: EASE }}
               className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-[0.9375rem] text-white/85"
             >
-              <span className="flex items-center gap-2">
-                <CalendarBlank weight="bold" className="size-[1.1rem] text-sun" />
-                {RUN.dateShort}
-              </span>
-              <span className="flex items-center gap-2">
-                <MapPin weight="bold" className="size-[1.1rem] text-sun" />
-                {RUN.venue}, {RUN.venueArea}
-              </span>
-              <span className="flex items-center gap-2">
-                <PersonSimpleRun weight="bold" className="size-[1.1rem] text-sun" />
-                21K, 10K, 5K, 1.965K walk, virtual
-              </span>
+              {[
+                { icon: CalendarBlank, bg: "bg-ember", t: RUN.dateShort },
+                { icon: MapPin, bg: "bg-royal", t: `${RUN.venue}, ${RUN.venueArea}` },
+                { icon: PersonSimpleRun, bg: "bg-forest", t: "21K, 10K, 5K, 1.965K walk, virtual" },
+              ].map((x) => (
+                <span key={x.t} className="flex items-center gap-2">
+                  <span className={`grid size-6 shrink-0 place-items-center rounded-full ${x.bg} ring-1 ring-white/25`}>
+                    <x.icon weight="bold" className="size-3.5 text-white" />
+                  </span>
+                  {x.t}
+                </span>
+              ))}
             </motion.div>
             <motion.div
               initial={{ opacity: 0, y: 14 }}
@@ -159,7 +161,7 @@ export function Hero() {
               transition={{ delay: 0.95, duration: 0.9, ease: EASE }}
               className="mt-7 flex flex-wrap gap-3"
             >
-              <ButtonLink href="/register" variant="sun" size="xl" arrow className="animate-pulse-ring">
+              <ButtonLink href="/register" variant="flag" size="xl" arrow className="animate-pulse-ring">
                 Sign up
               </ButtonLink>
               <ButtonLink href="/#events" variant="glass" size="xl">
@@ -198,7 +200,7 @@ export function Hero() {
                 initial={{ width: 0 }}
                 animate={{ width: `${Math.max(1.5, Math.min(100, (raised / goal) * 100))}%` }}
                 transition={{ delay: 1.4, duration: 1.6, ease: EASE }}
-                className="h-full rounded-full bg-[linear-gradient(90deg,var(--color-forest-400),var(--color-sun))]"
+                className="h-full rounded-full bg-[linear-gradient(90deg,var(--color-forest),var(--color-forest-400))]"
               />
             </div>
             <div className="mt-4 flex gap-4 text-[0.8125rem] text-white/70">

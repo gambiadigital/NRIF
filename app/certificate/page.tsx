@@ -97,8 +97,8 @@ function Certificate({ b, participantId, result }: { b: ClientBooking; participa
         <div className="no-scrollbar -mx-4 overflow-x-auto px-4 pb-4 sm:mx-0 sm:overflow-visible sm:px-0 sm:pb-0">
         <motion.div className="min-w-[40rem] sm:min-w-0" initial={{ opacity: 0, y: 30, rotateX: 12 }} animate={{ opacity: 1, y: 0, rotateX: 0 }} transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }} style={{ perspective: 1200 }}>
           <div ref={ref} className="@container relative aspect-[1.414/1] w-full overflow-hidden rounded-[1.25rem] bg-white shadow-pop ring-1 ring-line">
-            <div className="absolute inset-[2.2cqw] rounded-[0.8cqw] border-[0.25cqw] border-sun/70" />
-            <div className="absolute inset-[2.9cqw] rounded-[0.6cqw] border border-sun/40" />
+            <div className="absolute inset-[2.2cqw] rounded-[0.8cqw] border-[0.25cqw] border-forest/70" />
+            <div className="absolute inset-[2.9cqw] rounded-[0.6cqw] border border-ember/35" />
             <Swoosh className="absolute -right-[10cqw] -top-[7cqw] w-[38cqw] rotate-180 opacity-90" />
             <div className="relative flex h-full flex-col items-center px-[10cqw] pt-[6cqw] text-center">
               <div className="flex items-center gap-[2cqw]">
