@@ -1,6 +1,7 @@
 import { q, log } from "@/lib/server/db";
 import { HttpError, json, route } from "@/lib/server/http";
 import { flushOutbox, queueForBooking } from "@/lib/server/messages";
+import { settleOpenCards } from "@/lib/server/mpgs";
 
 /*
  * Once a day (vercel.json): release unpaid places after their 5-day hold, remind on day 3, send the race-week texts on
@@ -8,6 +9,9 @@ import { flushOutbox, queueForBooking } from "@/lib/server/messages";
  */
 export const GET = route(async (req: Request) => {
   if (req.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`) throw new HttpError(401, "Not allowed");
+
+  // Card payments the payer never came back from are settled first, so a paid booking is never released.
+  const cardsPaid = await settleOpenCards().catch((e) => (console.error("card sweep", e), 0));
 
   const released = await q<{ id: string; reference: string }>("update bookings set status = 'released' where status = 'pending' and hold_until < now() returning id, reference");
   for (const r of released) await log("release", `${r.reference} released: no payment within the hold.`, { bookingId: r.id });
@@ -38,5 +42,5 @@ export const GET = route(async (req: Request) => {
   }
 
   const { sent } = await flushOutbox(200);
-  return json({ released: released.length, reminders: due.length, raceTexts, sent });
+  return json({ cardsPaid, released: released.length, reminders: due.length, raceTexts, sent });
 });

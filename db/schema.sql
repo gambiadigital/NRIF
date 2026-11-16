@@ -266,3 +266,21 @@ create table if not exists code_requests (
 );
 create index if not exists code_requests_email_idx on code_requests (lower(email), at desc);
 create index if not exists bookings_email_idx on bookings (lower(email));
+
+-- Visa and Mastercard through the Mastercard Payment Gateway. One row per checkout attempt (order RFI-XXXX-C1, -C2...).
+-- The gateway's Retrieve Order is the only source of truth; this table only remembers which orders to ask about.
+create table if not exists card_payments (
+  order_id          text primary key,
+  booking_id        uuid not null references bookings(id),
+  session_id        text,
+  success_indicator text,
+  amount            numeric(12,2) not null,
+  currency          text not null,
+  status            text not null default 'open' check (status in ('open', 'paid')),
+  result            text,
+  receipt_id        uuid references receipts(id),
+  created_at        timestamptz not null default now(),
+  checked_at        timestamptz
+);
+create index if not exists card_payments_booking_idx on card_payments (booking_id, created_at desc);
+create index if not exists card_payments_open_idx on card_payments (created_at) where status = 'open';

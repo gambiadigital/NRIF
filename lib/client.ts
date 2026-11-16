@@ -101,7 +101,10 @@ export function useLiveEvents() {
   return EVENTS;
 }
 
-export type PublicSettings = Record<string, string> & { wave_link: string; wave_checkout: boolean };
+export type PublicSettings = Record<string, string> & { wave_link: string; wave_checkout: boolean; card_checkout: boolean; card_currencies: string };
+
+/** Card is offered only when the gateway is set up and takes this booking's currency. */
+export const cardFor = (s: PublicSettings | null | undefined, currency: string) => !!s?.card_checkout && (s.card_currencies ?? "").split(",").includes(currency);
 export const useSettings = () => useApi<PublicSettings>("/api/settings/public", 300_000);
 
 export type Stats = {

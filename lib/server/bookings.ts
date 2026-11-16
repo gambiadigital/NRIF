@@ -4,6 +4,7 @@ import { z } from "zod";
 import { q, one, log } from "./db";
 import { HttpError } from "./http";
 import { queueForBooking, flushOutbox } from "./messages";
+import { cardTakes } from "./cardConfig";
 import { CURRENCIES, SHIRT_SIZES } from "@/lib/data";
 import { raceDayAge, suggested } from "@/lib/format";
 import { WAIVER } from "@/lib/content";
@@ -43,7 +44,7 @@ export const BookingIn = z.object({
   steps: z.boolean().default(false),
   consents: z.object({ waiver: z.literal(true, { message: "Accept the health disclaimer and waiver" }), guardian: z.boolean(), photos: z.boolean(), news: z.boolean() }),
   donation: z.number().min(0).max(1_000_000).default(0),
-  payMethod: z.enum(["wave", "yonna", "ecobank", "remit"]),
+  payMethod: z.enum(["wave", "yonna", "ecobank", "remit", "card"]),
   source: z.string().max(40).default("direct"),
   referral: z.string().max(20).default(""),
 });
@@ -67,7 +68,8 @@ export async function createBooking(input: BookingInput) {
 
   if (input.residence === "abroad" && !input.city.trim()) throw new HttpError(400, "Tell us which city you live in");
   if (input.residence === "gambia" && input.currency !== "GMD") throw new HttpError(400, "Entries from The Gambia are paid in dalasi");
-  if (input.residence === "gambia" && input.payMethod === "remit") throw new HttpError(400, "Choose Wave, Yonna or Ecobank");
+  if (input.residence === "gambia" && input.payMethod === "remit") throw new HttpError(400, "Choose Wave, Yonna, Ecobank or a card");
+  if (input.payMethod === "card" && !cardTakes(input.currency)) throw new HttpError(400, "Card payments are not available for this booking. Choose another way to pay.");
 
   let minors = 0;
   const people = input.participants.map((p, i) => {

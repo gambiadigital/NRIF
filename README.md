@@ -27,6 +27,10 @@ npm run dev
 | `NEXT_PUBLIC_SITE_URL` | The public address, used in text-message links and as the origin for Neon Auth |
 | `NEON_AUTH_BASE_URL` | Neon Auth (Managed Better Auth) URL for the branch; sends and checks the email sign-in codes |
 | `WAVE_API_KEY`, `WAVE_WEBHOOK_SECRET` | Optional. Wave Checkout API: makes Wave instant and confirms bookings automatically |
+| `MPGS_MERCHANT_ID`, `MPGS_API_PASSWORD` | Visa and Mastercard through the Mastercard Payment Gateway. Card payments appear only when both are set. The test merchant ID starts with `TEST` |
+| `MPGS_GATEWAY` | Gateway host. Default `mtf.gateway.mastercard.com` (the test facility); the bank gives the live host |
+| `MPGS_CURRENCIES` | Currencies the merchant account takes by card, comma-separated. Default `GMD` |
+| `MPGS_WEBHOOK_SECRET` | Optional. The notification secret from Merchant Administration, for `/api/webhooks/mpgs` |
 | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM` | Optional. Sends the texts |
 | `RESEND_API_KEY`, `EMAIL_FROM` | Optional. Sends the emails |
 
@@ -42,6 +46,14 @@ record each receipt in **Admin → Payments**; a receipt quoting a waiting refer
 itself, anything else is matched by hand. Matching runs `confirm_booking()` in Postgres, which marks the booking paid,
 issues the next bib in each event's range (virtual entries get a `V` prefix) and gives steps-challenge bookings their
 `SC-` code, all in one transaction. The payer's screen notices within seconds and shows their bibs.
+
+**Cards.** Visa and Mastercard go through the Mastercard Payment Gateway's Hosted Checkout (API version 100): the payer
+types the card on Mastercard's page, never ours. Each try is its own order (`RFI-7Q4K-C1`, `-C2`...). When the payer comes
+back, the pending page asks our server, which asks the gateway (Retrieve Order) whether the money was captured; if it
+was, it records a `card` receipt and runs `confirm_booking()`, so bibs arrive at once. The gateway's webhook and the daily
+job run the same check, so a payer who closes the tab is still confirmed. Card shows only for bookings in a currency
+listed in `MPGS_CURRENCIES`. Test cards: Mastercard 5123 4500 0000 0008 or Visa 4508 7500 1574 1019, expiry 01/39
+(approved) or 05/39 (declined), security code 100.
 
 When Wave Checkout API keys arrive, set `WAVE_API_KEY` and `WAVE_WEBHOOK_SECRET` and point Wave's webhook at
 `/api/webhooks/wave`: each booking then gets its own checkout with the exact amount, and payment confirms itself.
@@ -62,6 +74,10 @@ SMTP account in **Settings → Better Auth** so codes come from NRIF and are not
 **Participants.** My entry signs in with an email code, or with the booking reference and phone number as a fallback. It shows bibs, the
 race-pack QR code, kit changes (until 9 January), place transfers, steps logging and, for virtual runners, uploading a
 run and the e-certificate once staff approve it.
+
+**Brand.** NRIF's rule: accents come from the Gambian flag (red, blue, green) or white, never yellow. Sign up buttons
+are flag red, as on the logo's "4". The NRIF and Run4Independence marks always appear together (`CoBrand` in
+`components/brand.tsx`); phones show the NRIF tree on its own so the pair fits.
 
 **Admin.** `/admin`, behind its own sign-in by email code. The first account is created at `/admin/login` with the
 setup code and a code sent to its email; further accounts are added by email in **Settings**, along with contact details, social links, payment numbers, the fund goal and

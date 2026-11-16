@@ -1,6 +1,7 @@
 import { settings } from "@/lib/server/db";
 import { json, route } from "@/lib/server/http";
 import { waveCheckoutEnabled, waveLink } from "@/lib/server/wave";
+import { cardCurrencies, cardEnabled } from "@/lib/server/cardConfig";
 
 const PUBLIC = [
   "contact_whatsapp",
@@ -19,5 +20,5 @@ const PUBLIC = [
 
 export const GET = route(async () => {
   const s = await settings(PUBLIC);
-  return json({ ...s, wave_link: waveLink(), wave_checkout: waveCheckoutEnabled() });
+  return json({ ...s, wave_link: waveLink(), wave_checkout: waveCheckoutEnabled(), card_checkout: cardEnabled(), card_currencies: cardEnabled() ? cardCurrencies().join(",") : "" });
 });

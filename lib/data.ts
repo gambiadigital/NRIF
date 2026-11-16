@@ -44,7 +44,7 @@ export type RaceEvent = {
   feeGMD: number;
   suggestedGBP: number;
   bibRange: [number, number];
-  accent: "ember" | "royal" | "forest" | "sun" | "cobalt";
+  accent: "ember" | "royal" | "forest" | "navy" | "cobalt";
   image: string;
   open?: boolean;
 };
@@ -115,7 +115,7 @@ export const EVENTS: RaceEvent[] = [
     feeGMD: 200,
     suggestedGBP: 10,
     bibRange: [7000, 8999],
-    accent: "sun",
+    accent: "navy",
     image: "/media/family-walk.webp",
   },
   {
@@ -228,6 +228,7 @@ export const BANJUL = { lat: 13.45, lng: -16.58 };
 
 export const PAYMENT_METHODS = {
   wave: { id: "wave", name: "Wave", note: "Pay in the Wave app", home: true, abroad: false },
+  card: { id: "card", name: "Visa or Mastercard", note: "Debit or credit card, on Mastercard's secure page", home: true, abroad: true },
   yonna: { id: "yonna", name: "Yonna", note: "Yonna Islamic Microfinance", home: true, abroad: false },
   ecobank: { id: "ecobank", name: "Ecobank", note: "Bank transfer or scan with your banking app", home: true, abroad: true },
   remit: { id: "remit", name: "Remitly or ACE", note: "Send to NRIF's Yonna or Wave number", home: false, abroad: true },

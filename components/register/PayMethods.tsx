@@ -14,7 +14,27 @@ const LOGOS: Partial<Record<PaymentMethodId, { src: string; w: number; h: number
   ecobank: { src: "/pay/ecobank-logo.png", w: 328, h: 102, bg: "bg-white" },
 };
 
+/** The two card acceptance marks, drawn small enough to share one tile. */
+function CardMarks() {
+  return (
+    <svg viewBox="0 0 72 44" className="size-full" role="img" aria-label="Visa and Mastercard">
+      <text x="5" y="27.5" fontFamily="Arial, Helvetica, sans-serif" fontSize="14" fontWeight="900" fontStyle="italic" letterSpacing="-0.4" fill="#1a1f71">
+        VISA
+      </text>
+      <circle cx="49.5" cy="22" r="8.2" fill="#eb001b" />
+      <circle cx="59.5" cy="22" r="8.2" fill="#f79e1b" />
+      <path d="M54.5 15.5a8.2 8.2 0 0 1 0 13 8.2 8.2 0 0 1 0-13z" fill="#ff5f00" />
+    </svg>
+  );
+}
+
 export function PayMark({ id, className }: { id: PaymentMethodId; className?: string }) {
+  if (id === "card")
+    return (
+      <span className={cn("grid h-11 w-[4.5rem] shrink-0 place-items-center overflow-hidden rounded-xl bg-white ring-1 ring-line", className)}>
+        <CardMarks />
+      </span>
+    );
   const logo = LOGOS[id];
   if (logo)
     return (

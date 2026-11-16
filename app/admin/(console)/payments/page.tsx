@@ -23,6 +23,7 @@ const METHODS = [
   { value: "yonna", label: "Yonna" },
   { value: "ecobank", label: "Ecobank" },
   { value: "remit", label: "Remitly or ACE" },
+  { value: "card", label: "Visa or Mastercard" },
   { value: "cash", label: "Cash" },
   { value: "other", label: "Other" },
 ];
@@ -73,8 +74,8 @@ export default function Payments() {
         }
       />
 
-      <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {(["wave", "yonna", "ecobank", "remit"] as const).map((m) => (
+      <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+        {(["wave", "card", "yonna", "ecobank", "remit"] as const).map((m) => (
           <div key={m} className="flex items-center gap-3 rounded-2xl border border-line bg-white p-3">
             <PayMark id={m} />
             <span className="min-w-0">
@@ -104,7 +105,7 @@ export default function Payments() {
                 <ul className="space-y-2">
                   {unmatched.map((r) => (
                     <li key={r.id} className="flex flex-wrap items-center gap-3 rounded-2xl border border-ember/20 bg-ember-50/40 p-3">
-                      <PayMark id={(["wave", "yonna", "ecobank", "remit"].includes(r.method) ? r.method : "remit") as never} />
+                      <PayMark id={(["wave", "yonna", "ecobank", "remit", "card"].includes(r.method) ? r.method : "remit") as never} />
                       <span className="min-w-0 flex-1">
                         <span className="block font-semibold text-navy">
                           {gmd(r.amount)} <span className="font-normal text-muted">by {r.method}</span>
@@ -173,7 +174,7 @@ export default function Payments() {
                             {p.expired ? (
                               <Badge tone="ember">Hold ended</Badge>
                             ) : (
-                              <Badge tone="sun" icon={<HourglassMedium weight="fill" className="size-3" />}>
+                              <Badge tone="cobalt" icon={<HourglassMedium weight="fill" className="size-3" />}>
                                 Day {Math.min(p.day, 5)} of 5
                               </Badge>
                             )}
@@ -207,7 +208,7 @@ export default function Payments() {
                 <ul className="space-y-2">
                   {data.pledges.map((p) => (
                     <li key={p.id} className="flex items-center gap-3 rounded-2xl border border-line p-3">
-                      <span className="grid size-10 place-items-center rounded-xl bg-sun text-navy">
+                      <span className="grid size-10 place-items-center rounded-xl bg-royal text-white">
                         <Footprints weight="fill" className="size-5" />
                       </span>
                       <span className="flex-1">
@@ -471,8 +472,8 @@ function ConfirmSheet({ booking, onClose, onDone }: { booking: Pending | null; o
         </Button>
       }
     >
-      <div className="flex items-start gap-3 rounded-2xl bg-sun-50 p-4 text-sm text-navy ring-1 ring-sun/40">
-        <WarningCircle weight="fill" className="mt-0.5 size-5 shrink-0 text-[#a77208]" />
+      <div className="flex items-start gap-3 rounded-2xl bg-cobalt-50 p-4 text-sm text-navy ring-1 ring-cobalt/15">
+        <WarningCircle weight="fill" className="mt-0.5 size-5 shrink-0 text-cobalt" />
         {booking ? `${booking.lead} · ${booking.events} · ${amt(booking.total, booking.currency)}` : ""}
       </div>
       <Field label="Why, for the record" className="mt-4">

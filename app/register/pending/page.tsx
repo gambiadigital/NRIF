@@ -1,16 +1,17 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
-import { HourglassMedium, Copy, Check, Bell, Money, CalendarX, PaperPlaneTilt, CheckCircle, ArrowSquareOut, WarningCircle, ArrowClockwise } from "@phosphor-icons/react";
+import { HourglassMedium, Copy, Check, Bell, Money, CalendarX, PaperPlaneTilt, CheckCircle, ArrowSquareOut, WarningCircle, ArrowClockwise, CreditCard, ShieldCheck, CircleNotch } from "@phosphor-icons/react";
 import { PAYMENT_METHODS, eventById, type PaymentMethodId } from "@/lib/data";
 import { money } from "@/lib/format";
-import { api, useSettings } from "@/lib/client";
+import { api, cardFor, useSettings } from "@/lib/client";
+import { payByCard } from "@/lib/card-client";
 import { useBookingData, formatHold } from "@/lib/booking-client";
 import { Button } from "@/components/ui/button";
 import { PayMark, ECOBANK_QR } from "@/components/register/PayMethods";
@@ -43,13 +44,76 @@ function Pending() {
   const { data: b, error, loading, reload } = useBookingData(ref, key, 15_000);
   const settings = useSettings().data;
   const [copied, setCopied] = useState(false);
-  const [tab, setTab] = useState<PaymentMethodId | null>(null);
+  const payParam = sp.get("pay");
+  const cardParam = sp.get("card");
+  const [tab, setTab] = useState<PaymentMethodId | null>(payParam === "card" || cardParam ? "card" : null);
   const [claiming, setClaiming] = useState(false);
   const [opening, setOpening] = useState(false);
+  const [cardBusy, setCardBusy] = useState(false);
+  const [checking, setChecking] = useState(!!cardParam && cardParam !== "cancelled");
+  const handled = useRef(false);
+  const clean = `/register/pending?ref=${ref ?? ""}&k=${encodeURIComponent(key ?? "")}`;
 
   useEffect(() => {
     if (b?.status === "paid") router.replace(ref && key ? `/confirmation?ref=${ref}&k=${encodeURIComponent(key)}` : "/confirmation");
   }, [b?.status, ref, key, router]);
+
+  async function startCard() {
+    if (!ref) return;
+    setCardBusy(true);
+    try {
+      // On success the browser leaves for Mastercard's page, so the button stays busy.
+      await payByCard(ref, key, (m) => {
+        toast.error(m);
+        setCardBusy(false);
+      });
+    } catch (e) {
+      toast.error((e as Error).message);
+      setCardBusy(false);
+    }
+  }
+
+  // Straight from the payment step with "card" chosen: open the card page once, and drop the flag so Back does not loop.
+  useEffect(() => {
+    if (payParam !== "card" || handled.current || !b || !settings) return;
+    handled.current = true;
+    window.history.replaceState(null, "", clean);
+    if (b.status === "pending" && cardFor(settings, b.currency)) setTimeout(() => void startCard(), 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [payParam, b, settings]);
+
+  // Back from the card page: ask the gateway (through our server) what happened. The answer never comes from the URL.
+  useEffect(() => {
+    if (!cardParam || !ref || handled.current) return;
+    handled.current = true;
+    window.history.replaceState(null, "", clean);
+    if (cardParam === "cancelled") {
+      toast("Card payment cancelled", { description: "Nothing was taken. Pay by card again, or choose another way." });
+      return;
+    }
+    (async () => {
+      try {
+        for (let i = 0; i < 5; i++) {
+          const r = await api<{ outcome: "paid" | "declined" | "waiting" }>(`/api/bookings/${ref}/card/check?k=${encodeURIComponent(key ?? "")}`, { method: "POST" });
+          if (r.outcome === "paid") {
+            await reload();
+            return;
+          }
+          if (r.outcome === "declined") {
+            toast.error("Your card payment did not go through", { description: "Nothing was taken. Try another card, or choose another way to pay." });
+            return;
+          }
+          await new Promise((res) => setTimeout(res, 4000));
+        }
+        toast("We are waiting to hear from your bank", { description: "This page moves on by itself once the payment confirms." });
+      } catch (e) {
+        toast.error((e as Error).message);
+      } finally {
+        setChecking(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cardParam, ref]);
 
   if (loading && !b) return <Loading />;
   if (error || !b) {
@@ -71,7 +135,8 @@ function Pending() {
   }
 
   const abroad = b.residence === "abroad";
-  const methods = (Object.keys(PAYMENT_METHODS) as PaymentMethodId[]).filter((k) => (abroad ? PAYMENT_METHODS[k].abroad : PAYMENT_METHODS[k].home));
+  const cardOk = cardFor(settings, b.currency);
+  const methods = (Object.keys(PAYMENT_METHODS) as PaymentMethodId[]).filter((k) => (abroad ? PAYMENT_METHODS[k].abroad : PAYMENT_METHODS[k].home) && (k !== "card" || cardOk));
   const active = tab ?? (methods.includes(b.payMethod as PaymentMethodId) ? (b.payMethod as PaymentMethodId) : methods[0]!);
   const amount = money(b.total, b.currency as never, { decimals: b.currency !== "GMD" });
   const waveNumber = settings?.wave_number || "+220 83 379 6680";
@@ -129,7 +194,7 @@ function Pending() {
   return (
     <div className="mx-auto max-w-2xl">
       <div className="flex items-center gap-4">
-        <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-sun-100 text-[#a77208]">
+        <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-cobalt-100 text-cobalt">
           <motion.span animate={{ rotate: [0, 180, 180, 360] }} transition={{ duration: 3.2, repeat: Infinity, times: [0, 0.35, 0.6, 1], ease: "easeInOut" }}>
             <HourglassMedium weight="fill" className="size-7" />
           </motion.span>
@@ -142,8 +207,24 @@ function Pending() {
         </div>
       </div>
 
-      <div className="mt-6 rounded-2xl bg-sun-50 px-5 py-4 text-[0.9375rem] text-navy ring-1 ring-sun/40">
-        Your place is held until <b>{formatHold(b.holdUntil)}</b>. Send <b>{amount}</b> and quote your reference.
+      {checking && (
+        <div role="status" className="mt-6 flex items-center gap-3 rounded-2xl bg-navy px-5 py-4 text-[0.9375rem] text-white">
+          <CircleNotch weight="bold" className="size-5 shrink-0 animate-spin" />
+          Checking your card payment with the bank…
+        </div>
+      )}
+
+      <div className="mt-6 rounded-2xl bg-cobalt-50 px-5 py-4 text-[0.9375rem] text-navy ring-1 ring-cobalt/15">
+        Your place is held until <b>{formatHold(b.holdUntil)}</b>.{" "}
+        {active === "card" ? (
+          <>
+            Pay <b>{amount}</b> by card and it is confirmed straight away.
+          </>
+        ) : (
+          <>
+            Send <b>{amount}</b> and quote your reference.
+          </>
+        )}
       </div>
 
       <div className="mt-6 overflow-hidden rounded-[1.75rem] border border-line bg-white shadow-card">
@@ -195,6 +276,24 @@ function Pending() {
                   <QrTile caption="Scan with the Wave app">
                     <QRCodeSVG value={settings?.wave_link || "https://pay.wave.com/m/M_gm_CedMPBz-cNJ4/mu/U_gm_PQs2KiZYy60h/c/gm/"} size={164} fgColor="#0b1b3a" level="M" />
                   </QrTile>
+                </div>
+              )}
+              {active === "card" && (
+                <div>
+                  <Steps
+                    items={[
+                      <>Tap <b>Pay {amount} by card</b>.</>,
+                      <>Enter your Visa or Mastercard, debit or credit, on Mastercard&apos;s secure page.</>,
+                      <>Your {b.participants.every((p) => eventById(p.eventId).kind === "virtual") ? "e-bib arrives" : "bib numbers arrive"} the moment it goes through. No reference to quote.</>,
+                    ]}
+                  />
+                  <Button block size="lg" variant="ink" className="mt-5" icon={cardBusy ? <CircleNotch weight="bold" className="size-5 animate-spin" /> : <CreditCard weight="bold" className="size-5" />} onClick={startCard} disabled={cardBusy || checking || !cardOk}>
+                    {cardBusy ? "Opening the card page…" : `Pay ${amount} by card`}
+                  </Button>
+                  <p className="mt-3 flex items-start gap-2 text-[0.8125rem] text-muted">
+                    <ShieldCheck weight="fill" className="mt-0.5 size-4 shrink-0 text-forest" />
+                    Your card details go straight to Mastercard. NRIF never sees them.
+                  </p>
                 </div>
               )}
               {active === "yonna" && (

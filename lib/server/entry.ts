@@ -16,6 +16,13 @@ export async function startEntrySession(bookingId: string, email?: string) {
   (await cookies()).set(ENTRY_COOKIE, value, cookieOptions(ENTRY_DAYS * 86400));
 }
 
+/** For the pay buttons: the access key from the payment link, or the My entry sign-in for this same booking. */
+export async function payerBooking(ref: string, key: string): Promise<BookingRow> {
+  const b = key ? await bookingByRef(ref, key) : await currentBooking().then((x) => (x.reference === ref.toUpperCase() ? x : null)).catch(() => null);
+  if (!b) throw new HttpError(404, "We could not find that booking");
+  return b;
+}
+
 /** The booking for this request: a valid reference + key in the URL, or the My entry cookie. */
 export async function currentBooking(ref?: string | null, key?: string | null): Promise<BookingRow> {
   if (ref && key) {

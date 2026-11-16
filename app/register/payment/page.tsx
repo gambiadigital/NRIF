@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { HandHeart, Lightning, Hash, ShieldCheck, WarningCircle } from "@phosphor-icons/react";
 import { PAYMENT_METHODS, type PaymentMethodId } from "@/lib/data";
 import { useBooking, lineItems, total, fmt, DONATION_PRESETS, saveBooking } from "@/lib/store";
-import { api, useSettings } from "@/lib/client";
+import { api, cardFor, useSettings } from "@/lib/client";
 import { Badge, RadioDot, TextInput } from "@/components/ui/fields";
 import { Button } from "@/components/ui/button";
 import { StepFooter, StepTitle, SectionCard } from "@/components/register/Shell";
@@ -20,10 +20,16 @@ export default function Payment() {
   const items = lineItems(b);
   const presets = DONATION_PRESETS[b.currency] ?? DONATION_PRESETS.GMD!;
   const [other, setOther] = useState(b.donation > 0 && !presets.includes(b.donation));
-  const methods = (Object.keys(PAYMENT_METHODS) as PaymentMethodId[]).filter((k) => (b.residence === "gambia" ? PAYMENT_METHODS[k].home : PAYMENT_METHODS[k].abroad));
+  const settings = useSettings().data;
+  const cardOk = cardFor(settings, b.currency);
+  const methods = (Object.keys(PAYMENT_METHODS) as PaymentMethodId[]).filter(
+    (k) => (b.residence === "gambia" ? PAYMENT_METHODS[k].home : PAYMENT_METHODS[k].abroad) && (k !== "card" || cardOk),
+  );
   const method = methods.includes(b.payMethod) ? b.payMethod : methods[0]!;
-  const waveInstant = !!useSettings().data?.wave_checkout && b.currency === "GMD";
-  const instant = method === "wave" && waveInstant;
+  const waveInstant = !!settings?.wave_checkout && b.currency === "GMD";
+  // Instant methods confirm the booking by themselves: card always, Wave once its Checkout API is connected.
+  const isInstant = (k: PaymentMethodId) => k === "card" || (k === "wave" && waveInstant);
+  const instant = isInstant(method);
   const sum = total(b);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -60,7 +66,8 @@ export default function Payment() {
       });
       saveBooking(created);
       s.reset();
-      router.push(`/register/pending?ref=${created.reference}&k=${encodeURIComponent(created.key)}`);
+      // For a card, the pending page opens Mastercard's payment page straight away; coming back lands there too.
+      router.push(`/register/pending?ref=${created.reference}&k=${encodeURIComponent(created.key)}${method === "card" ? "&pay=card" : ""}`);
     } catch (e) {
       const msg = (e as Error).message;
       setError(msg);
@@ -167,17 +174,17 @@ export default function Payment() {
               <span className="min-w-0 flex-1">
                 <span className="block font-bold text-navy">{k === "ecobank" && b.residence === "abroad" ? "Ecobank, international transfer" : m.name}</span>
                 <span className="block text-sm text-muted">{m.note}</span>
-                <span className={cn("mt-1 flex items-center gap-1 text-xs font-bold sm:hidden", (k === "wave" && waveInstant) ? "text-forest" : "text-[#9a6a06]")}>
-                  {(k === "wave" && waveInstant) ? <Lightning weight="fill" className="size-3" /> : <Hash weight="bold" className="size-3" />}
-                  {(k === "wave" && waveInstant) ? "Instant" : "Reference code"}
+                <span className={cn("mt-1 flex items-center gap-1 text-xs font-bold sm:hidden", isInstant(k) ? "text-forest" : "text-cobalt")}>
+                  {isInstant(k) ? <Lightning weight="fill" className="size-3" /> : <Hash weight="bold" className="size-3" />}
+                  {isInstant(k) ? "Instant" : "Reference code"}
                 </span>
               </span>
-              {(k === "wave" && waveInstant) ? (
+              {isInstant(k) ? (
                 <Badge tone="forest" className="hidden sm:inline-flex" icon={<Lightning weight="fill" className="size-3" />}>
                   Instant
                 </Badge>
               ) : (
-                <Badge tone="sun" className="hidden sm:inline-flex" icon={<Hash weight="bold" className="size-3" />}>
+                <Badge tone="cobalt" className="hidden sm:inline-flex" icon={<Hash weight="bold" className="size-3" />}>
                   Reference code
                 </Badge>
               )}
@@ -188,7 +195,9 @@ export default function Payment() {
 
       <p className="mt-5 flex items-start gap-2 text-[0.8125rem] text-muted">
         <ShieldCheck weight="fill" className="mt-0.5 size-4 shrink-0 text-forest" />
-        {instant
+        {method === "card"
+          ? "Next you enter your card on Mastercard's secure page. NRIF never sees your card number, and your bib numbers arrive the moment the payment goes through."
+          : instant
           ? "You approve the payment in the Wave app, and your bib numbers arrive the moment it lands."
           : "Next you get a reference code to quote with your payment. Your place is held for 5 days while it reaches NRIF, and your bib numbers arrive by text and email once it is matched."}
       </p>
@@ -202,7 +211,7 @@ export default function Payment() {
 
       <StepFooter back="/register/waiver">
         <Button size="lg" arrow={!busy} onClick={pay} disabled={busy}>
-          {busy ? "Saving your booking…" : instant ? `Pay ${fmt(b, sum)} with Wave` : "Get my reference"}
+          {busy ? "Saving your booking…" : method === "card" ? `Pay ${fmt(b, sum)} by card` : instant ? `Pay ${fmt(b, sum)} with Wave` : "Get my reference"}
         </Button>
       </StepFooter>
     </div>
