@@ -221,6 +221,14 @@ function Pending() {
           <>
             Pay <b>{amount}</b> by card and it is confirmed straight away.
           </>
+        ) : active === "wave" && !settings?.wave_checkout ? (
+          <>
+            Pay <b>{amount}</b> with Wave, then tell us the number you paid from.
+          </>
+        ) : active === "wave" ? (
+          <>
+            Pay <b>{amount}</b> with Wave and it is confirmed straight away.
+          </>
         ) : (
           <>
             Send <b>{amount}</b> and quote your reference.
