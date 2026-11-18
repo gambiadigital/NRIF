@@ -3,12 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { PencilSimple, ShieldCheck, UserPlus, Footprints, UsersThree, Check, Trash, WarningCircle, Student, Buildings, Trophy } from "@phosphor-icons/react";
-import { EVENTS, RELATIONSHIPS, SHIRT_SIZES, eventById } from "@/lib/data";
+import { PencilSimple, ShieldCheck, UserPlus, UsersThree, Check, Trash, WarningCircle, Student, Buildings, Trophy } from "@phosphor-icons/react";
+import { EVENTS, RELATIONSHIPS, eventById, type Residence } from "@/lib/data";
 import { api } from "@/lib/client";
 import { useBooking, lead, newParticipant, entryPrice, fmt, type Participant } from "@/lib/store";
 import { raceDayAge, initials } from "@/lib/format";
-import { Field, TextInput, DateField, Select, ChipGroup, Badge, Checkbox, PhoneField, RadioDot } from "@/components/ui/fields";
+import { Field, TextInput, DateField, Select, Badge, PhoneField, RadioDot } from "@/components/ui/fields";
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
 import { StepFooter, StepTitle, SectionCard } from "@/components/register/Shell";
@@ -109,7 +109,7 @@ export default function Participants() {
         icon={<UserPlus weight="bold" className="size-5" />}
         onClick={() => {
           setIsNew(true);
-          setEditing(newParticipant(b.residence === "abroad" ? "5k-virtual" : "heritage"));
+          setEditing(newParticipant(b.residence === "abroad" ? "virtual" : "heritage"));
         }}
       >
         Add another participant
@@ -149,17 +149,6 @@ export default function Participants() {
             ) : null}
           </AnimatePresence>
         </SectionCard>
-
-        <Checkbox checked={b.steps} onChange={(v) => b.patch({ steps: v })} className="p-5 shadow-card">
-          <span className="flex items-start gap-3">
-            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-royal text-white">
-              <Footprints weight="fill" className="size-5" />
-            </span>
-            <span>
-              <b>Join the steps challenge.</b> Get a code that friends and family can give to, from anywhere. Every step you log grows the Endowment Fund.
-            </span>
-          </span>
-        </Checkbox>
       </div>
 
       <StepFooter back="/register/details">
@@ -173,6 +162,7 @@ export default function Participants() {
         value={editing}
         isNew={isNew}
         leadName={me.fullName}
+        residence={b.residence}
         onClose={() => setEditing(null)}
         onSave={(p) => {
           if (isNew) b.addParticipant(p);
@@ -192,6 +182,7 @@ function ParticipantEditor({
   value,
   isNew,
   leadName,
+  residence,
   onClose,
   onSave,
   onRemove,
@@ -199,6 +190,7 @@ function ParticipantEditor({
   value: Participant | null;
   isNew: boolean;
   leadName: string;
+  residence: Residence;
   onClose: () => void;
   onSave: (p: Participant) => void;
   onRemove: (id: string) => void;
@@ -216,7 +208,6 @@ function ParticipantEditor({
     name: !p.fullName.trim() && "Enter their full name",
     dob: (!p.dob || age === null) && "Enter a date of birth",
     guardian: minor && !p.guardianIsLead && (!p.guardian.name.trim() || p.guardian.phone.digits.length < 7) && "Add the guardian's name and phone",
-    size: !p.shirt && "Choose a size",
   };
   const ok = !tooYoung && Object.values(errs).every((e) => !e);
 
@@ -238,7 +229,7 @@ function ParticipantEditor({
             size="lg"
             onClick={() => {
               setTried(true);
-              if (ok) onSave({ ...p, bibName: p.bibName || p.fullName.split(" ")[0]!.toUpperCase().slice(0, 10) });
+              if (ok) onSave(p);
             }}
           >
             {isNew ? "Add to booking" : "Save changes"}
@@ -260,7 +251,8 @@ function ParticipantEditor({
           <Select
             value={p.eventId}
             onChange={(v) => set({ eventId: v as Participant["eventId"] })}
-            options={EVENTS.map((e) => ({ value: e.id, label: e.name, hint: `${e.ageLabel} · ${e.kind === "virtual" ? "Run anywhere" : e.blurb}` }))}
+            // The virtual run is only offered to bookings from abroad.
+            options={EVENTS.filter((e) => residence === "abroad" || e.kind === "in-person").map((e) => ({ value: e.id, label: e.name, hint: `${e.ageLabel} · ${e.blurb}` }))}
             invalid={tooYoung}
           />
         </Field>
@@ -310,20 +302,6 @@ function ParticipantEditor({
         )}
       </AnimatePresence>
 
-      <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-[1fr_11rem]">
-        <Field label="T-shirt size" required error={tried ? errs.size || undefined : undefined}>
-          <ChipGroup value={p.shirt || null} onChange={(v) => set({ shirt: v })} options={SHIRT_SIZES.map((s) => ({ value: s, label: s }))} />
-        </Field>
-        <Field label="Name on bib">
-          <TextInput
-            value={p.bibName}
-            maxLength={10}
-            onChange={(e) => set({ bibName: e.target.value.toUpperCase().replace(/[^A-Z' -]/g, "") })}
-            placeholder={p.fullName.split(" ")[0]?.toUpperCase() || "NAME"}
-            className="font-mono uppercase tracking-[0.12em]"
-          />
-        </Field>
-      </div>
     </Sheet>
   );
 }

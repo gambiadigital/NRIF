@@ -10,18 +10,18 @@ export const RUN = {
   organiser: "National Research & Innovation Fund",
   short: "NRIF",
   tagline: "One Day, One Nation",
-  dateISO: "2027-01-30T07:00:00Z", // The Gambia is UTC+0 all year.
+  dateISO: "2027-01-30T07:30:00Z", // The start. The Gambia is UTC+0 all year.
   dateLong: "Saturday 30 January 2027",
   dateShort: "Sat 30 Jan 2027",
   venue: "Independence Stadium",
   venueArea: "Bakau",
-  gatesOpen: "05:30",
-  kitLock: "Sat 9 Jan 2027",
-  racePacks: "Thu 28 and Fri 29 Jan, 10:00 to 17:00",
-  racePacksShort: "Thu 28 or Fri 29 Jan",
+  gatesOpen: "06:30",
+  start: "07:30",
   virtualWindow: "23 to 31 Jan",
   virtualUploadBy: "Tue 2 Feb",
+  virtualPriceGBP: 15,
   goal: 20_000_000,
+  participantGoal: 10_000,
   citiesGoal: 62,
   waiverVersion: "v1.0",
   holdDays: 5,
@@ -31,7 +31,7 @@ export type Residence = "gambia" | "abroad";
 export type Currency = "GMD" | "GBP" | "USD" | "EUR" | "SEK";
 
 export type RaceEvent = {
-  id: "21k" | "10k" | "5k" | "heritage" | "10k-virtual" | "5k-virtual";
+  id: "5k" | "heritage" | "virtual" | "21k" | "10k" | "10k-virtual" | "5k-virtual";
   name: string;
   distance: string;
   km: number;
@@ -49,51 +49,18 @@ export type RaceEvent = {
   open?: boolean;
 };
 
+/** On sale: the 5 km run and the Heritage Walk at home, and the Diaspora Virtual Run for people who live abroad. */
 export const EVENTS: RaceEvent[] = [
   {
-    id: "21k",
-    name: "21K Half marathon",
-    distance: "21K",
-    km: 21.1,
-    minAge: 18,
-    ageLabel: "18+",
-    kind: "in-person",
-    blurb: "Competitive, timed",
-    detail: "Chip-timed, with age categories and prizes for the first three in each.",
-    start: "06:30",
-    feeGMD: 1000,
-    suggestedGBP: 30,
-    bibRange: [1, 999],
-    accent: "ember",
-    image: "/media/start-line.webp",
-  },
-  {
-    id: "10k",
-    name: "10K",
-    distance: "10K",
-    km: 10,
-    minAge: 16,
-    ageLabel: "16+",
-    kind: "in-person",
-    blurb: "Community run",
-    detail: "The coast road and back. Run it, jog it, enjoy it.",
-    start: "07:00",
-    feeGMD: 500,
-    suggestedGBP: 20,
-    bibRange: [1000, 3999],
-    accent: "royal",
-    image: "/media/hero-coast.webp",
-  },
-  {
     id: "5k",
-    name: "5K",
+    name: "5 km Run",
     distance: "5K",
     km: 5,
     minAge: 12,
     ageLabel: "12+",
     kind: "in-person",
     blurb: "Community run",
-    detail: "A fast, friendly loop for first-timers, schools and teams.",
+    detail: "Five kilometres from Independence Stadium, for first-timers, schools, teams and seasoned runners alike.",
     start: "07:30",
     feeGMD: 300,
     suggestedGBP: 15,
@@ -103,7 +70,7 @@ export const EVENTS: RaceEvent[] = [
   },
   {
     id: "heritage",
-    name: "1.965K Heritage walk",
+    name: "1.965 km Heritage Walk",
     distance: "1.965K",
     km: 1.965,
     minAge: 0,
@@ -111,7 +78,7 @@ export const EVENTS: RaceEvent[] = [
     kind: "in-person",
     blurb: "Under 18s with a guardian",
     detail: "1.965 kilometres, one for every year since 1965. Families, elders and everyone in between.",
-    start: "08:00",
+    start: "07:30",
     feeGMD: 200,
     suggestedGBP: 10,
     bibRange: [7000, 8999],
@@ -119,42 +86,33 @@ export const EVENTS: RaceEvent[] = [
     image: "/media/family-walk.webp",
   },
   {
-    id: "10k-virtual",
-    name: "10K Virtual",
-    distance: "10K",
+    id: "virtual",
+    name: "Diaspora Virtual Run",
+    distance: "5/10K",
     km: 10,
-    minAge: 16,
-    ageLabel: "16+",
-    kind: "virtual",
-    blurb: "Run anywhere",
-    detail: "Any day, 23 to 31 Jan. Record it on Strava, Pacer or any GPS app.",
-    start: "Any day",
-    feeGMD: 500,
-    suggestedGBP: 20,
-    bibRange: [1000, 3999],
-    accent: "cobalt",
-    image: "/media/london-virtual.webp",
-  },
-  {
-    id: "5k-virtual",
-    name: "5K Virtual",
-    distance: "5K",
-    km: 5,
     minAge: 12,
     ageLabel: "12+",
     kind: "virtual",
-    blurb: "Run anywhere",
-    detail: "Any day, 23 to 31 Jan. Walk it or run it, wherever you are.",
+    blurb: "5 or 10 km, wherever you live",
+    detail: "Run 5 or 10 km any day from 23 to 31 Jan, wherever you live, and upload it from any running app. For entries from abroad.",
     start: "Any day",
-    feeGMD: 300,
+    feeGMD: 0,
     suggestedGBP: 15,
-    bibRange: [4000, 6999],
+    bibRange: [7000, 9999],
     accent: "cobalt",
-    image: "/media/shoes.webp",
+    image: "/media/london-virtual.webp",
   },
 ];
 
-export const eventById = (id: string) => EVENTS.find((e) => e.id === id) ?? EVENTS[1];
+/** Events from before the change to three. Off sale; kept so bookings made earlier still show the right name. */
+const RETIRED: RaceEvent[] = [
+  { id: "21k", name: "21K Half marathon", distance: "21K", km: 21.1, minAge: 18, ageLabel: "18+", kind: "in-person", blurb: "", detail: "", start: "07:30", feeGMD: 1000, suggestedGBP: 30, bibRange: [1, 999], accent: "ember", image: "/media/start-line.webp", open: false },
+  { id: "10k", name: "10K", distance: "10K", km: 10, minAge: 16, ageLabel: "16+", kind: "in-person", blurb: "", detail: "", start: "07:30", feeGMD: 500, suggestedGBP: 20, bibRange: [1000, 3999], accent: "royal", image: "/media/hero-coast.webp", open: false },
+  { id: "10k-virtual", name: "10K Virtual", distance: "10K", km: 10, minAge: 16, ageLabel: "16+", kind: "virtual", blurb: "", detail: "", start: "Any day", feeGMD: 500, suggestedGBP: 20, bibRange: [1000, 3999], accent: "cobalt", image: "/media/london-virtual.webp", open: false },
+  { id: "5k-virtual", name: "5K Virtual", distance: "5K", km: 5, minAge: 12, ageLabel: "12+", kind: "virtual", blurb: "", detail: "", start: "Any day", feeGMD: 300, suggestedGBP: 15, bibRange: [4000, 6999], accent: "cobalt", image: "/media/shoes.webp", open: false },
+];
+
+export const eventById = (id: string) => EVENTS.find((e) => e.id === id) ?? RETIRED.find((e) => e.id === id) ?? EVENTS[0]!;
 
 export const CURRENCIES: { code: Currency; symbol: string; label: string; perGBP: number }[] = [
   { code: "GBP", symbol: "£", label: "British pound", perGBP: 1 },
@@ -163,14 +121,12 @@ export const CURRENCIES: { code: Currency; symbol: string; label: string; perGBP
   { code: "SEK", symbol: "kr", label: "Swedish krona", perGBP: 13.4 },
 ];
 
+/** Only the gates and the start are confirmed; NRIF shares the rest of the day's plan once it is settled. */
 export const TIMELINE = [
-  { time: "05:30", label: "Gates open", note: "Bag drop and warm-up on the track" },
-  { time: "06:30", label: "21K start", note: "Half marathon, chip-timed" },
-  { time: "07:00", label: "10K start", note: "Community run" },
-  { time: "07:30", label: "5K start", note: "Community run" },
-  { time: "08:00", label: "Heritage walk", note: "1.965K, all ages" },
-  { time: "10:00", label: "Awards", note: "On the main stage" },
+  { time: "06:30", label: "Gates open", note: "Warm up on the track at Independence Stadium" },
+  { time: "07:30", label: "Start", note: "5 km run and 1.965 km Heritage Walk" },
 ];
+export const TIMELINE_NOTE = "The rest of the day's plan is being confirmed and will be shared here soon.";
 
 export const TOWNS = [
   "Serrekunda",
@@ -238,34 +194,36 @@ export type PaymentMethodId = keyof typeof PAYMENT_METHODS;
 export const SHIRT_SIZES = ["XS", "S", "M", "L", "XL", "XXL"] as const;
 export const RELATIONSHIPS = ["Brother", "Sister", "Mother", "Father", "Husband", "Wife", "Son", "Daughter", "Friend", "Colleague", "Other"];
 
+/*
+ * "Why we run" cards. NRIF asked for the six priorities from its deck here; until that deck arrives these are the
+ * three cards the site launched with. Icons: flask, plant, lightbulb, heart, globe, cpu, leaf, users, book.
+ */
+export const PRIORITIES: { icon: string; title: string; text: string }[] = [
+  { icon: "flask", title: "Gambian research", text: "Support for researchers working on the questions that matter here." },
+  { icon: "plant", title: "Young innovators", text: "Backing for young Gambians with ideas worth building at home." },
+  { icon: "lightbulb", title: "A fund that lasts", text: "An endowment keeps its capital working, so today's entries keep giving for years." },
+];
+
 export const FAQS = [
   {
     q: "Can I enter if I live abroad?",
-    a: "Yes. Pick Abroad at the first step and you will see suggested donations in your currency. Every event stays open to you, so if you are home in January you can run in person, or join the 10K or 5K virtual from wherever you are.",
+    a: "Yes. Pick Abroad at the first step to join the Diaspora Virtual Run: 5 or 10 km, any day from 23 to 31 January, wherever you live, for £15. If you are home in January, the 5 km run and the Heritage Walk are open to you too.",
   },
   {
     q: "How do I register my children?",
-    a: "Add them to your booking as extra participants. When a date of birth is under 18, a guardian section opens and you accept the waiver for them. Under 18s can enter the Heritage walk at any age, the 5K from 12 and the 10K from 16.",
+    a: "Add them to your booking as extra participants. When a date of birth is under 18, a guardian section opens and you accept the waiver for them. Under 18s can walk the Heritage Walk at any age and run the 5 km from 12.",
   },
   {
     q: "Which payment methods can I use?",
-    a: "Wave, Yonna or Ecobank in The Gambia. From abroad, send with Remitly or ACE to NRIF's Yonna or Wave number, or transfer to NRIF's Ecobank account. You get a reference code to quote with your payment, and your place is held for five days while we match it.",
+    a: "Wave, Yonna or Ecobank in The Gambia. From abroad, send with Remitly or ACE to NRIF's Yonna or Wave number, or transfer to NRIF's Ecobank account. You get a reference code to quote with your payment, and your place is held for five days while we match it. Where Visa and Mastercard are offered, a card payment is confirmed straight away.",
   },
   {
     q: "When do I get my bib number?",
-    a: "As soon as your payment is matched. You see it on screen, and we send it by text and email with a QR code for race-pack collection.",
+    a: "As soon as your payment is matched. You see it on screen, and we send it by text and email. The bib on screen is only a picture: the bib you are given will look different, and NRIF does not print names on bibs.",
   },
   {
-    q: "Where do I collect my race pack?",
-    a: "At Independence Stadium on Thursday 28 or Friday 29 January, 10:00 to 17:00. Show the QR code from your email. One person can collect for the whole booking.",
-  },
-  {
-    q: "Can I change my T-shirt size or the name on my bib?",
-    a: "Yes, from My entry, until Saturday 9 January 2027. After that the kit goes to print.",
-  },
-  {
-    q: "What is the steps challenge?",
-    a: "Tick the box when you register and you get a code friends and family can give to. Every step you log adds to the Endowment Fund.",
+    q: "What time does it start?",
+    a: "Gates open at 06:30 and the 5 km run and Heritage Walk start at 07:30 at Independence Stadium, Bakau. The rest of the day's plan will be shared once it is confirmed.",
   },
   {
     q: "Can I get a refund or give my place to someone else?",

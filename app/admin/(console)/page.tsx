@@ -22,7 +22,7 @@ type Overview = {
   activity: { at: string; actor: string; text: string }[];
 };
 
-const EVENT_COLOURS: Record<string, string> = { "21k": "#d7141a", "10k": "#1f3c99", "5k": "#135f40", heritage: "#0b1b3a", "10k-virtual": "#2a3181", "5k-virtual": "#4b54b0" };
+const EVENT_COLOURS: Record<string, string> = { "21k": "#d7141a", "10k": "#1f3c99", "5k": "#135f40", heritage: "#0b1b3a", "10k-virtual": "#2a3181", "5k-virtual": "#4b54b0", virtual: "#2a3181" };
 const SOURCE_COLOURS = ["#2a3181", "#1f3c99", "#135f40", "#0b1b3a", "#d7141a", "#5d6577", "#cfc8b9"];
 
 function greeting() {

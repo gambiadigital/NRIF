@@ -1,6 +1,6 @@
 import "server-only";
 import { cookies } from "next/headers";
-import { q, one } from "./db";
+import { q } from "./db";
 import { HttpError, entrySession } from "./http";
 import { bookingById, bookingByRef, participantsOf, publicBooking, type BookingRow } from "./bookings";
 import { ENTRY_COOKIE, cookieOptions, seal } from "./session";
@@ -48,22 +48,11 @@ export async function entryView(b: BookingRow) {
         [ids],
       )
     : [];
-  const steps = await one<{ total: number }>("select coalesce(sum(steps), 0)::int as total from step_logs where booking_id = $1", [b.id]);
-  const week = await q<{ day: string; steps: number }>(
-    "select to_char(day, 'YYYY-MM-DD') as day, steps from step_logs where booking_id = $1 and day > current_date - 7 order by day",
-    [b.id],
-  );
-  const raised = b.steps_code
-    ? await one<{ v: string; n: number }>("select coalesce(sum(amount) filter (where status = 'paid'), 0) as v, count(*) filter (where status = 'paid')::int as n from step_pledges where steps_code = $1", [b.steps_code])
-    : null;
   const transfers = ids.length ? await q<{ participant_id: string; new_name: string; status: string }>("select participant_id, new_name, status from transfer_requests where participant_id = any($1) order by created_at desc", [ids]) : [];
   return publicBooking(b, people, {
     results: results.map((r) => ({ ...r, distance_km: Number(r.distance_km) })),
-    stepsTotal: steps?.total ?? 0,
-    stepsWeek: week,
-    stepsRaised: Number(raised?.v ?? 0),
-    stepsSupporters: raised?.n ?? 0,
     transfers,
+    // Transfers close on 9 January (the old kit deadline); the client still calls the flag kitLocked.
     kitLocked: Date.now() >= KIT_LOCK.getTime(),
   });
 }

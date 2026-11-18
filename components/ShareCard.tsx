@@ -34,7 +34,9 @@ export const ShareCard = forwardRef<HTMLDivElement, { distance: string; name: st
 export function ShareSheet({ open, onOpenChange, distance, name, bib, virtual }: { open: boolean; onOpenChange: (v: boolean) => void; distance: string; name: string; bib: string; virtual?: boolean }) {
   const card = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState(false);
-  const link = `run4independence.gm/?ref=${bib}`;
+  // The site's own address (www.nrif.gm once the platform moves there), so referral links always land on sign-up.
+  const site = (process.env.NEXT_PUBLIC_SITE_URL || "https://nrif.vercel.app").replace(/^https?:\/\//, "").replace(/\/$/, "");
+  const link = `${site}/?ref=${bib}`;
   const nets = [
     { icon: FacebookLogo, label: "Facebook", c: "text-[#1877F2]", src: "facebook" },
     { icon: InstagramLogo, label: "Instagram", c: "text-[#E1306C]", src: "instagram" },

@@ -6,7 +6,7 @@ import { Ticker, WhyWeRun } from "@/components/landing/Story";
 import { Events } from "@/components/landing/Events";
 import { RaceDay } from "@/components/landing/RaceDay";
 import { Abroad } from "@/components/landing/Abroad";
-import { Challenge, Kit, Gallery, Faq, FinalCta } from "@/components/landing/More";
+import { Challenge, Gallery, Faq, FinalCta } from "@/components/landing/More";
 
 export default function Home() {
   return (
@@ -21,7 +21,6 @@ export default function Home() {
         <RaceDay />
         <Abroad />
         <Challenge />
-        <Kit />
         <Gallery />
         <Faq />
         <FinalCta />

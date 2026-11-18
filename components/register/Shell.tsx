@@ -7,7 +7,6 @@ import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { X, Lock, Tag, Check } from "@phosphor-icons/react";
 import { CoBrand } from "@/components/brand";
-import { Badge } from "@/components/ui/fields";
 import { useBooking, lineItems, total, fmt } from "@/lib/store";
 import { initials } from "@/lib/format";
 import { cn } from "@/lib/cn";
@@ -101,7 +100,6 @@ function Summary() {
         <div className="overflow-hidden rounded-[1.5rem] border border-line bg-white shadow-card">
           <div className="flex items-center justify-between border-b border-line px-5 py-4">
             <p className="font-bold text-navy">Your booking</p>
-            {b.residence === "abroad" && <Badge tone="cobalt">Suggested</Badge>}
           </div>
           <ul className="divide-y divide-line">
             <AnimatePresence initial={false}>

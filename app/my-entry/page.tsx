@@ -8,16 +8,16 @@ import { AnimatePresence, motion } from "motion/react";
 import { Tabs } from "radix-ui";
 import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
-import { ArrowRight, EnvelopeSimple, LockSimple, ArrowsLeftRight, PencilSimple, Footprints, Package, MapPin, CheckCircle, ShareNetwork, UserSwitch, SignOut, HourglassMedium, Plus } from "@phosphor-icons/react";
+import { ArrowRight, EnvelopeSimple, ArrowsLeftRight, MapPin, CheckCircle, UserSwitch, SignOut, HourglassMedium } from "@phosphor-icons/react";
 import { SiteHeader } from "@/components/site/Header";
-import { Bib } from "@/components/Bib";
+import { Bib, BibNote } from "@/components/Bib";
 import { FlagBars } from "@/components/brand";
 import { Countdown } from "@/components/Countdown";
 import { Button } from "@/components/ui/button";
-import { ChipGroup, CheckMark, TextInput, PhoneField, Field } from "@/components/ui/fields";
+import { CheckMark, TextInput, PhoneField, Field } from "@/components/ui/fields";
 import { CodeInput } from "@/components/ui/CodeInput";
 import { Sheet } from "@/components/ui/sheet";
-import { RUN, SHIRT_SIZES, TIMELINE, eventById } from "@/lib/data";
+import { RUN, TIMELINE, TIMELINE_NOTE, eventById } from "@/lib/data";
 import { money } from "@/lib/format";
 import { api } from "@/lib/client";
 import { savedBookings } from "@/lib/store";
@@ -97,7 +97,7 @@ function SignIn({ onDone }: { onDone: () => void }) {
         <div className="absolute inset-0 bg-gradient-to-t from-navy via-navy/30 to-transparent" />
         <div className="absolute bottom-10 left-10 right-10 text-white">
           <p className="flex items-center gap-2.5 font-label text-white"><FlagBars small />My entry</p>
-          <p className="mt-3 font-race text-[4rem]">Your bibs, your kit, your day</p>
+          <p className="mt-3 font-race text-[4rem]">Your bibs, your day</p>
         </div>
       </div>
       <div className="flex items-center justify-center px-4 py-16 sm:px-6">
@@ -223,9 +223,7 @@ function SignIn({ onDone }: { onDone: () => void }) {
 
 const TAB_LIST = [
   { v: "entries", l: "Entries" },
-  { v: "kit", l: "Kit" },
   { v: "day", l: "Race day" },
-  { v: "steps", l: "Steps challenge" },
 ];
 
 function Dashboard({ b, reload }: { b: ClientBooking; reload: () => Promise<void> }) {
@@ -234,7 +232,7 @@ function Dashboard({ b, reload }: { b: ClientBooking; reload: () => Promise<void
   const lead = b.participants[0]!;
   const allVirtual = b.participants.every((p) => eventById(p.eventId).kind === "virtual");
   const [checks, setChecks] = useState<Record<string, boolean>>({});
-  const tabs = TAB_LIST.filter((t) => t.v !== "steps" || b.stepsCode);
+  const tabs = TAB_LIST;
   const amount = money(b.total, b.currency as never, { decimals: b.currency !== "GMD" });
 
   async function signOut() {
@@ -253,7 +251,7 @@ function Dashboard({ b, reload }: { b: ClientBooking; reload: () => Promise<void
           </p>
         </div>
         <div>
-          <p className="mb-2 font-label text-white/55">{allVirtual ? "Run window opens in" : "The 10K starts in"}</p>
+          <p className="mb-2 font-label text-white/55">{allVirtual ? "Run window opens in" : "The run starts in"}</p>
           <Countdown compact />
         </div>
       </div>
@@ -317,14 +315,13 @@ function Dashboard({ b, reload }: { b: ClientBooking; reload: () => Promise<void
                 const moving = b.transfers?.find((t) => t.participant_id === p.id && t.status === "requested");
                 return (
                   <motion.div key={p.id} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }} className="rounded-[1.5rem] border border-line bg-white p-4 shadow-card">
-                    <Bib number={p.bib ?? "····"} eventId={p.eventId as never} name={p.bibName ?? undefined} flat />
+                    <Bib number={p.bib ?? "····"} eventId={p.eventId as never} flat />
                     <div className="mt-4 flex items-start justify-between gap-3 px-1">
                       <div>
                         <p className="font-bold text-navy">{p.fullName}</p>
                         <p className="text-sm text-muted">
                           {ev.name}
                           {p.age !== null && ` · age ${p.age}`}
-                          {p.shirt && ` · ${p.shirt}`}
                         </p>
                       </div>
                       <span className={cn("flex items-center gap-1 rounded-full px-2 py-1 text-[0.6875rem] font-bold uppercase tracking-wide", b.status === "paid" ? "bg-forest-50 text-forest" : "bg-cobalt-50 text-cobalt")}>
@@ -340,11 +337,6 @@ function Dashboard({ b, reload }: { b: ClientBooking; reload: () => Promise<void
                       </p>
                     )}
                     <div className="mt-4 flex flex-wrap gap-2 px-1">
-                      {!b.kitLocked && (
-                        <button onClick={() => setTab("kit")} className="flex h-9 items-center gap-1.5 rounded-full bg-sand px-3 text-[0.8125rem] font-semibold text-navy hover:bg-line">
-                          <PencilSimple weight="bold" className="size-3.5" /> Kit
-                        </button>
-                      )}
                       {!b.kitLocked && !moving && (
                         <button onClick={() => setTransfer(p.id)} className="flex h-9 items-center gap-1.5 rounded-full bg-sand px-3 text-[0.8125rem] font-semibold text-navy hover:bg-line">
                           <UserSwitch weight="bold" className="size-3.5" /> Transfer
@@ -364,6 +356,7 @@ function Dashboard({ b, reload }: { b: ClientBooking; reload: () => Promise<void
                   </motion.div>
                 );
               })}
+              {!allVirtual && <BibNote className="sm:col-span-2 max-w-none" />}
             </div>
             <div className="rounded-[1.5rem] border border-line bg-white p-6 text-center shadow-card">
               {allVirtual ? (
@@ -373,34 +366,22 @@ function Dashboard({ b, reload }: { b: ClientBooking; reload: () => Promise<void
                 </>
               ) : b.status === "paid" ? (
                 <>
-                  <p className="font-label text-muted">Race-pack collection</p>
+                  <p className="font-label text-muted">Your booking code</p>
                   <div className="mx-auto mt-4 w-fit rounded-2xl bg-white p-3 ring-1 ring-line">
                     <QRCodeSVG value={`R4I:${b.reference}`} size={176} fgColor="#0b1b3a" />
                   </div>
                   <p className="mt-4 font-mono text-sm font-semibold text-navy">{b.reference}</p>
                   <p className="mt-1 text-sm text-muted">
-                    {RUN.racePacksShort}, 10:00 to 17:00.{b.participants.length > 1 ? ` Collects all ${b.participants.length} packs.` : ""}
+                    Show it when you collect {b.participants.length > 1 ? `all ${b.participants.length} bibs` : "your bib"}. We will tell you where and when before race day.
                   </p>
                 </>
               ) : (
                 <>
                   <p className="font-bold text-navy">Your QR code arrives with your bibs</p>
-                  <p className="mt-1 text-sm text-muted">Show it at race-pack collection.</p>
+                  <p className="mt-1 text-sm text-muted">You show it when you collect your bib.</p>
                 </>
               )}
             </div>
-          </div>
-        </Tabs.Content>
-
-        <Tabs.Content value="kit" className="pt-8 outline-none">
-          <div className="mb-5 flex items-center gap-3 rounded-2xl bg-cobalt-50 px-5 py-4 text-sm text-navy ring-1 ring-cobalt/15">
-            <LockSimple weight="fill" className="size-5 text-cobalt" />
-            <span>{b.kitLocked ? "Kit choices are locked for printing." : <>Sizes and bib names lock on <b>{RUN.kitLock}</b> so printing can start.</>}</span>
-          </div>
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            {b.participants.map((p) => (
-              <KitCard key={p.id} p={p} locked={!!b.kitLocked} onSaved={reload} />
-            ))}
           </div>
         </Tabs.Content>
 
@@ -410,10 +391,7 @@ function Dashboard({ b, reload }: { b: ClientBooking; reload: () => Promise<void
               <p className="font-label text-muted">{RUN.dateLong}</p>
               <ol className="mt-4 space-y-3">
                 {TIMELINE.map((t) => {
-                  const mine = b.participants.some((p) => {
-                    const ev = eventById(p.eventId);
-                    return ev.kind === "in-person" && (t.label.startsWith(ev.distance) || (t.label === "Heritage walk" && p.eventId === "heritage"));
-                  });
+                  const mine = t.label === "Start" && b.participants.some((p) => eventById(p.eventId).kind === "in-person");
                   return (
                     <li key={t.time} className={cn("flex items-center gap-4 rounded-xl px-3 py-2", mine && "bg-forest-50")}>
                       <span className="w-12 font-mono font-semibold text-navy">{t.time}</span>
@@ -423,6 +401,7 @@ function Dashboard({ b, reload }: { b: ClientBooking; reload: () => Promise<void
                   );
                 })}
               </ol>
+              <p className="mt-3 px-3 text-sm text-muted">{TIMELINE_NOTE}</p>
               <a href="https://maps.google.com/?q=Independence+Stadium+Bakau" target="_blank" rel="noreferrer" className="mt-5 flex items-center gap-2 py-2 text-sm font-semibold text-forest hover:underline">
                 <MapPin weight="bold" className="size-4" /> Directions to {RUN.venue}
               </a>
@@ -433,7 +412,7 @@ function Dashboard({ b, reload }: { b: ClientBooking; reload: () => Promise<void
                 {[
                   { k: "bib", l: "Bib pinned on the front, with medical notes on the back" },
                   { k: "water", l: "A water bottle; there is water on the course" },
-                  { k: "id", l: "ID for anyone collecting race packs" },
+                  { k: "id", l: "Your booking QR code, from your email or this page" },
                   { k: "hat", l: "A hat and sun cream. It is warm by 08:00" },
                 ].map((x) => (
                   <button key={x.k} onClick={() => setChecks((c) => ({ ...c, [x.k]: !c[x.k] }))} className="group flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left hover:bg-paper">
@@ -442,126 +421,14 @@ function Dashboard({ b, reload }: { b: ClientBooking; reload: () => Promise<void
                   </button>
                 ))}
               </div>
-              <div className="mt-5 flex items-center gap-3 rounded-2xl bg-paper p-4 text-sm text-muted">
-                <Package weight="duotone" className="size-6 shrink-0 text-forest" />
-                Packs: {RUN.racePacks}
-              </div>
             </div>
           </div>
         </Tabs.Content>
 
-        {b.stepsCode && (
-          <Tabs.Content value="steps" className="pt-8 outline-none">
-            <StepsTab b={b} onLogged={reload} />
-          </Tabs.Content>
-        )}
       </Tabs.Root>
 
       <TransferSheet participantId={transfer} onClose={() => setTransfer(null)} onDone={reload} />
     </motion.div>
-  );
-}
-
-function KitCard({ p, locked, onSaved }: { p: ClientBooking["participants"][number]; locked: boolean; onSaved: () => Promise<void> }) {
-  const [shirt, setShirt] = useState(p.shirt ?? "");
-  const [bibName, setBibName] = useState(p.bibName ?? "");
-  const [busy, setBusy] = useState(false);
-  const dirty = shirt !== (p.shirt ?? "") || bibName !== (p.bibName ?? "");
-  async function save() {
-    setBusy(true);
-    try {
-      await api(`/api/entry/participants/${p.id}`, { method: "PATCH", json: { shirt, bibName } });
-      toast.success("Kit saved", { description: `${p.firstName}: ${shirt}, ${bibName || "no name"}` });
-      await onSaved();
-    } catch (e) {
-      toast.error((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-  return (
-    <div className="grid grid-cols-1 gap-5 rounded-[1.5rem] border border-line bg-white p-5 shadow-card sm:grid-cols-[1fr_10rem]">
-      <div className="space-y-4">
-        <p className="font-bold text-navy">{p.fullName}</p>
-        <ChipGroup value={shirt || null} onChange={(v) => !locked && setShirt(v)} options={SHIRT_SIZES.map((s) => ({ value: s, label: s }))} />
-        <TextInput value={bibName} disabled={locked} maxLength={10} onChange={(e) => setBibName(e.target.value.toUpperCase().replace(/[^A-Z' -]/g, ""))} className="font-mono uppercase tracking-[0.12em]" />
-        {!locked && (
-          <Button size="md" variant={dirty ? "primary" : "line"} disabled={!dirty || busy} onClick={save}>
-            {busy ? "Saving…" : dirty ? "Save changes" : "Saved"}
-          </Button>
-        )}
-      </div>
-      <Bib number={p.bib ?? "····"} eventId={p.eventId as never} name={bibName} flat className="self-center" />
-    </div>
-  );
-}
-
-function StepsTab({ b, onLogged }: { b: ClientBooking; onLogged: () => Promise<void> }) {
-  const [steps, setSteps] = useState("");
-  const [busy, setBusy] = useState(false);
-  const today = new Date().toISOString().slice(0, 10);
-  async function log() {
-    setBusy(true);
-    try {
-      await api("/api/entry/steps", { json: { day: today, steps: Number(steps) } });
-      setSteps("");
-      toast.success("Steps logged");
-      await onLogged();
-    } catch (e) {
-      toast.error((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-  const link = typeof window !== "undefined" ? `${window.location.origin}/steps/${b.stepsCode}` : `/steps/${b.stepsCode}`;
-  return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.3fr_1fr]">
-      <div className="rounded-[2rem] bg-royal p-6 text-white sm:p-8">
-        <p className="flex items-center gap-2 font-label text-white">
-          <Footprints weight="fill" className="size-4" /> Steps challenge · {b.stepsCode}
-        </p>
-        <p className="mt-3 font-bib text-[4rem] leading-none text-white">GMD {(b.stepsRaised ?? 0).toLocaleString("en-GB")}</p>
-        <p className="text-white/75">
-          given by {b.stepsSupporters ?? 0} {b.stepsSupporters === 1 ? "supporter" : "supporters"} · {(b.stepsTotal ?? 0).toLocaleString("en-GB")} steps logged
-        </p>
-        <div className="mt-6 flex flex-wrap gap-2">
-          <Button
-            variant="white"
-            size="lg"
-            icon={<ShareNetwork weight="bold" className="size-5" />}
-            onClick={() => {
-              navigator.clipboard?.writeText(link).catch(() => {});
-              toast.success("Link copied", { description: link });
-            }}
-          >
-            Copy my page link
-          </Button>
-          <Link href={`/steps/${b.stepsCode}`} className="flex h-[3.25rem] items-center justify-center rounded-full border border-white/30 px-6 font-semibold text-white hover:bg-white/10">
-            Open my page
-          </Link>
-        </div>
-      </div>
-      <div className="rounded-[2rem] border border-line bg-white p-6 shadow-card">
-        <p className="font-bold text-navy">Log today&apos;s steps</p>
-        <p className="mt-1 text-sm text-muted">From your phone&apos;s health app or your watch. Logging again today replaces the figure.</p>
-        <div className="mt-4 flex gap-2">
-          <TextInput inputMode="numeric" value={steps} onChange={(e) => setSteps(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="12000" className="tabular" />
-          <Button size="lg" className="h-12 shrink-0" icon={<Plus weight="bold" className="size-4" />} disabled={!steps || busy} onClick={log}>
-            Log
-          </Button>
-        </div>
-        {!!b.stepsWeek?.length && (
-          <ul className="mt-5 space-y-1.5 text-sm">
-            {b.stepsWeek.map((d) => (
-              <li key={d.day} className="flex justify-between">
-                <span className="text-muted">{new Date(d.day).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}</span>
-                <span className="font-semibold text-navy tabular">{d.steps.toLocaleString("en-GB")}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </div>
   );
 }
 
@@ -589,7 +456,7 @@ function TransferSheet({ participantId, onClose, onDone }: { participantId: stri
       open={participantId !== null}
       onOpenChange={(o) => !o && onClose()}
       title="Transfer this entry"
-      description={`Free until ${RUN.kitLock}. NRIF contacts the new runner to add their details and accept the waiver.`}
+      description="Free until Sat 9 Jan 2027. NRIF contacts the new runner to add their details and accept the waiver."
       footer={
         <Button block size="lg" icon={<ArrowsLeftRight weight="bold" className="size-5" />} disabled={busy || name.trim().length < 2 || phone.digits.length < 7} onClick={send}>
           {busy ? "Sending…" : "Request the transfer"}

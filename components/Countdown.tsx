@@ -10,7 +10,7 @@ function parts(ms: number) {
   return { days: Math.floor(s / 86400), hours: Math.floor((s % 86400) / 3600), mins: Math.floor((s % 3600) / 60), secs: s % 60 };
 }
 
-/** Time to the 10K gun. Rendered after mount so server and client never disagree about "now". */
+/** Time to the start (RUN.dateISO). Rendered after mount so server and client never disagree about "now". */
 export function Countdown({ tone = "dark", className, compact }: { tone?: "dark" | "light"; className?: string; compact?: boolean }) {
   const [now, setNow] = useState<number | null>(null);
   useEffect(() => {

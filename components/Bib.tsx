@@ -1,4 +1,5 @@
 import { QRCodeSVG } from "qrcode.react";
+import { Info } from "@phosphor-icons/react/dist/ssr";
 import { eventById, type RaceEvent } from "@/lib/data";
 import { cn } from "@/lib/cn";
 
@@ -31,7 +32,7 @@ export function Bib({
 }) {
   const ev = eventById(eventId);
   const tone = BAND[ev.accent];
-  const label = ev.kind === "virtual" ? `${ev.distance} Virtual` : ev.id === "heritage" ? "Heritage walk" : ev.id === "21k" ? "Half marathon" : ev.distance;
+  const label = ev.id === "virtual" ? "Virtual run" : ev.kind === "virtual" ? `${ev.distance} Virtual` : ev.id === "heritage" ? "Heritage Walk" : ev.id === "21k" ? "Half marathon" : ev.distance;
   return (
     <div className={cn("@container w-full", className)}>
       <div
@@ -62,5 +63,17 @@ export function Bib({
         </div>
       </div>
     </div>
+  );
+}
+
+/** NRIF's bibs are plain numbered bibs: the one on screen is only a picture for sharing. */
+export function BibNote({ className }: { className?: string }) {
+  return (
+    <p className={cn("flex w-full max-w-xl items-start gap-2.5 rounded-2xl bg-cobalt-50 px-4 py-3 text-left text-sm text-navy ring-1 ring-cobalt/15", className)}>
+      <Info weight="fill" className="mt-0.5 size-4 shrink-0 text-cobalt" />
+      <span>
+        The bib on this page is a picture for sharing. The bib you are given will look different, and NRIF does not print names on bibs.
+      </span>
+    </p>
   );
 }

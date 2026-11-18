@@ -145,7 +145,7 @@ export function Hero() {
               {[
                 { icon: CalendarBlank, bg: "bg-ember", t: RUN.dateShort },
                 { icon: MapPin, bg: "bg-royal", t: `${RUN.venue}, ${RUN.venueArea}` },
-                { icon: PersonSimpleRun, bg: "bg-forest", t: "21K, 10K, 5K, 1.965K walk, virtual" },
+                { icon: PersonSimpleRun, bg: "bg-forest", t: "5 km run, 1.965 km walk, virtual from abroad" },
               ].map((x) => (
                 <span key={x.t} className="flex items-center gap-2">
                   <span className={`grid size-6 shrink-0 place-items-center rounded-full ${x.bg} ring-1 ring-white/25`}>
@@ -165,7 +165,7 @@ export function Hero() {
                 Sign up
               </ButtonLink>
               <ButtonLink href="/#events" variant="glass" size="xl">
-                See the six events
+                See the events
               </ButtonLink>
             </motion.div>
           </div>
@@ -176,13 +176,13 @@ export function Hero() {
             transition={{ delay: 1.05, duration: 1, ease: EASE }}
             className="w-full rounded-[1.75rem] border border-white/15 bg-navy/45 p-5 shadow-pop backdrop-blur-xl sm:p-6 lg:w-[23rem]"
           >
-            <p className="font-label text-white/60">The 10K starts in</p>
+            <p className="font-label text-white/60">The run starts in</p>
             <Countdown className="mt-3" />
             <div className="my-5 h-px bg-white/10" />
             {stats && stats.entries === 0 && raised === 0 ? (
               <div>
                 <p className="font-label text-white/60">Registration is open</p>
-                <p className="mt-2 text-[0.9375rem] leading-relaxed text-white/80">Be one of the first on the start list. Every entry grows the fund for Gambian research.</p>
+                <p className="mt-2 text-[0.9375rem] leading-relaxed text-white/80">Be one of the first of {RUN.participantGoal.toLocaleString("en-GB")} on the start list. Every entry grows the fund for Gambian research.</p>
               </div>
             ) : (
               <>
@@ -205,7 +205,7 @@ export function Hero() {
             </div>
             <div className="mt-4 flex gap-4 text-[0.8125rem] text-white/70">
               <span>
-                <b className="text-white">{(stats?.entries ?? 0).toLocaleString("en-GB")}</b> {stats?.entries === 1 ? "entry" : "entries"}
+                <b className="text-white">{(stats?.entries ?? 0).toLocaleString("en-GB")}</b> of {RUN.participantGoal.toLocaleString("en-GB")} entries
               </span>
               <span>
                 <b className="text-white">

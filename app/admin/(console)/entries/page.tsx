@@ -151,7 +151,7 @@ function BookingDrawer({ id, onClose }: { id: string | null; onClose: () => void
                   <p className="font-bold text-navy">{p.full_name}</p>
                   <p className="text-muted">{EVENTS.find((e) => e.id === p.event_id)?.name}</p>
                   <p className="text-muted">
-                    Born {new Date(p.dob).toLocaleDateString("en-GB")} · {p.shirt} · {p.bib_name}
+                    Born {new Date(p.dob).toLocaleDateString("en-GB")}
                   </p>
                   {!p.is_lead && !p.guardian_is_lead && p.guardian_name && <p className="text-cobalt">Guardian: {p.guardian_name}</p>}
                 </div>

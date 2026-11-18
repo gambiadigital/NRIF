@@ -4,67 +4,29 @@ import Image from "next/image";
 import Link from "next/link";
 import { Accordion } from "radix-ui";
 import { motion } from "motion/react";
-import { Footprints, Plus, Student, Buildings, Trophy, ArrowUpRight, TShirt, Medal, LockSimple } from "@phosphor-icons/react";
+import { Plus, Student, Buildings, Trophy, ArrowUpRight } from "@phosphor-icons/react";
 import { ContactList, useContacts } from "@/components/site/Contact";
 import { FAQS, RUN } from "@/lib/data";
 import { useStats } from "@/lib/client";
-import { Reveal, RiseLines, Marquee, Tilt } from "@/components/ui/motion";
+import { Reveal, RiseLines, Marquee } from "@/components/ui/motion";
 import { ButtonLink } from "@/components/ui/button";
 import { Countdown } from "@/components/Countdown";
-import { Bib } from "@/components/Bib";
 import { FlagBars } from "@/components/brand";
 
 export function Challenge() {
   const teams = useStats().data?.teams ?? [];
   return (
     <section className="py-24 sm:py-32">
-      <div className="mx-auto grid grid-cols-1 max-w-[88rem] gap-4 px-4 sm:px-6 lg:grid-cols-2 lg:px-10">
-        <Reveal className="relative flex flex-col overflow-hidden rounded-[2rem] bg-royal p-7 text-white sm:p-10">
-          <div className="relative z-10 max-w-md">
-            <p className="font-label">The steps challenge</p>
-            <h3 className="mt-4 font-race text-[clamp(2.6rem,5vw,4.4rem)]">Turn steps into research</h3>
-            <p className="mt-4 text-[1.0625rem] leading-relaxed text-white/80">
-              Tick one box when you sign up and your bib number becomes a code like <b className="font-mono">SC-1047</b>. Friends and family give to it, wherever
-              they are, and every step you log shows on your page.
-            </p>
-            <ButtonLink href="/register" variant="white" size="lg" arrow className="mt-7">
-              Sign up and take part
-            </ButtonLink>
-          </div>
-          <div className="relative z-10 mt-10 w-full max-w-[19rem] self-end sm:mt-auto sm:pt-10">
-            <motion.div initial={{ rotate: 8, y: 40, opacity: 0 }} whileInView={{ rotate: -3, y: 0, opacity: 1 }} viewport={{ once: true }} transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1] }} className="rounded-[2rem] bg-white p-5 shadow-pop">
-              <div className="flex items-center gap-3">
-                <span className="relative size-11 overflow-hidden rounded-full bg-forest-50">
-                  <Image src="/media/runner-woman.webp" alt="" fill sizes="44px" className="object-cover object-top" />
-                </span>
-                <div>
-                  <p className="font-semibold">Your steps page</p>
-                  <p className="text-xs text-muted">Example · SC-1047</p>
-                </div>
-              </div>
-              <div className="mt-5 flex items-center gap-5">
-                <svg viewBox="0 0 80 80" className="size-24 -rotate-90">
-                  <circle cx="40" cy="40" r="32" fill="none" stroke="#eeeae1" strokeWidth="9" />
-                  <motion.circle cx="40" cy="40" r="32" fill="none" stroke="#135f40" strokeWidth="9" strokeLinecap="round" initial={{ pathLength: 0 }} whileInView={{ pathLength: 0.68 }} viewport={{ once: true }} transition={{ duration: 1.8, delay: 0.4, ease: [0.16, 1, 0.3, 1] }} />
-                </svg>
-                <div>
-                  <p className="font-bib text-[2.2rem] leading-none">146,880</p>
-                  <p className="text-xs text-muted">steps logged</p>
-                  <p className="mt-2 text-sm font-bold text-forest">GMD 6,850 raised</p>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-          <Footprints weight="fill" className="absolute -left-6 -top-6 size-40 rotate-12 text-white/20" />
-        </Reveal>
-
-        <Reveal delay={0.08} className="relative overflow-hidden rounded-[2rem] bg-forest p-7 text-white sm:p-10">
+      <div className="mx-auto max-w-[88rem] px-4 sm:px-6 lg:px-10">
+        <Reveal className="relative grid grid-cols-1 gap-8 overflow-hidden rounded-[2rem] bg-forest p-7 text-white sm:p-10 lg:grid-cols-2 lg:gap-14">
+          <div>
           <p className="font-label text-white/70">Teams</p>
           <h3 className="mt-4 font-race text-[clamp(2.6rem,5vw,4.4rem)]">Run as a school or company</h3>
           <p className="mt-4 max-w-md text-[1.0625rem] leading-relaxed text-white/75">
-            Your organiser shares a team code. Everyone who enters it is grouped together, and the biggest teams get a place on the stage at 10:00.
+            Your organiser shares a team code. Everyone who enters it is grouped together, and the biggest teams are recognised on the day.
           </p>
-          <ol className="mt-8 space-y-2">
+          </div>
+          <ol className="space-y-2 lg:self-center">
             {teams.length === 0 && <li className="rounded-2xl bg-white/[0.08] p-4 text-sm text-white/70 ring-1 ring-white/10">Ask NRIF for a team code for your school, company or club.</li>}
             {teams.map((t, i) => (
               <li key={t.code} className="flex items-center gap-4 rounded-2xl bg-white/[0.08] p-3 pr-4 ring-1 ring-white/10">
@@ -89,63 +51,13 @@ export function Challenge() {
   );
 }
 
-export function Kit() {
-  return (
-    <section className="relative overflow-hidden bg-sand py-24 sm:py-32">
-      <div className="mx-auto grid grid-cols-1 max-w-[88rem] items-center gap-12 px-4 sm:px-6 lg:grid-cols-2 lg:px-10">
-        <div>
-          <Reveal>
-            <p className="font-label text-forest">Race kit</p>
-          </Reveal>
-          <h2 className="mt-5 font-race text-[clamp(2.8rem,7vw,6.2rem)] text-navy">
-            <RiseLines lines={["Your name.", "Your number.", <span key="c" className="text-ember">Your colours.</span>]} />
-          </h2>
-          <div className="mt-10 space-y-3">
-            {[
-              { icon: TShirt, t: "A race T-shirt for every entry", d: "In-person runners collect it with their pack. Choose the size when you sign up." },
-              { icon: Medal, t: "A medal at the finish", d: "Gold, on a ribbon in the flag's colours. Virtual runners get an e-certificate with their time." },
-              { icon: LockSimple, t: `Kit locks on ${RUN.kitLock}`, d: "Change your size or the name on your bib from My entry until then." },
-            ].map((x, i) => (
-              <Reveal key={x.t} delay={i * 0.06} className="flex items-start gap-4 rounded-[1.25rem] bg-white p-5">
-                <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-navy text-white">
-                  <x.icon weight="duotone" className="size-6" />
-                </span>
-                <span>
-                  <span className="block font-semibold text-navy">{x.t}</span>
-                  <span className="mt-0.5 block text-sm leading-relaxed text-muted">{x.d}</span>
-                </span>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-        <div className="relative mx-auto aspect-square w-full max-w-[36rem]">
-          <div className="absolute inset-[8%] rounded-full bg-[radial-gradient(circle,rgb(242_178_51/0.45),transparent_68%)]" />
-          <motion.div initial={{ opacity: 0, y: 40, rotate: -10 }} whileInView={{ opacity: 1, y: 0, rotate: -6 }} viewport={{ once: true }} transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }} className="absolute left-0 top-[6%] w-[64%]">
-            <Image src="/media/tee.webp" alt="White race T-shirt with red, blue and green stripes" width={1000} height={1000} className="h-auto w-full drop-shadow-[0_30px_40px_rgb(11_27_58/0.25)]" />
-          </motion.div>
-          <motion.div initial={{ opacity: 0, y: 60 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 1.2, delay: 0.15, ease: [0.16, 1, 0.3, 1] }} className="absolute bottom-[4%] right-0 w-[48%]">
-            <motion.div animate={{ rotate: [-3, 3, -3] }} transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }} style={{ transformOrigin: "50% 0%" }}>
-              <Image src="/media/medal.webp" alt="Gold finisher's medal on a red, blue and green ribbon" width={1000} height={1000} className="h-auto w-full drop-shadow-[0_30px_40px_rgb(11_27_58/0.3)]" />
-            </motion.div>
-          </motion.div>
-          <Tilt className="absolute bottom-[10%] left-[6%] w-[46%]">
-            <motion.div initial={{ opacity: 0, rotate: 0 }} whileInView={{ opacity: 1, rotate: 4 }} viewport={{ once: true }} transition={{ duration: 1.1, delay: 0.3 }}>
-              <Bib number="1047" eventId="10k" name="FATOU" />
-            </motion.div>
-          </Tilt>
-        </div>
-      </div>
-    </section>
-  );
-}
-
 const SHOTS = [
-  { src: "/media/start-line.webp", cap: "The start, 06:30" },
-  { src: "/media/water-station.webp", cap: "Water every 2.5 km" },
-  { src: "/media/family-walk.webp", cap: "The Heritage walk" },
+  { src: "/media/start-line.webp", cap: "The start, 07:30" },
+  { src: "/media/water-station.webp", cap: "Water on the course" },
+  { src: "/media/family-walk.webp", cap: "The Heritage Walk" },
   { src: "/media/finish.webp", cap: "The finish" },
   { src: "/media/team.webp", cap: "Teams" },
-  { src: "/media/aerial-coast.webp", cap: "The coast road" },
+  { src: "/media/aerial-coast.webp", cap: "Bakau" },
 ];
 
 export function Gallery() {

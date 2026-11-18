@@ -4,13 +4,12 @@ import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "motion/react";
-import { toast } from "sonner";
-import { ShareNetwork, CalendarPlus, ChatCircleText, Package, Footprints, Copy, CaretRight, UserCircle, CheckCircle } from "@phosphor-icons/react";
+import { ShareNetwork, CalendarPlus, ChatCircleText, CaretRight, UserCircle, CheckCircle } from "@phosphor-icons/react";
 import { RUN, eventById } from "@/lib/data";
 import { money } from "@/lib/format";
 import { useBookingData } from "@/lib/booking-client";
 import { EntryGate } from "@/components/EntryGate";
-import { Bib } from "@/components/Bib";
+import { Bib, BibNote } from "@/components/Bib";
 import { Button } from "@/components/ui/button";
 import { ShareCard, ShareSheet } from "@/components/ShareCard";
 import { Tilt } from "@/components/ui/motion";
@@ -54,7 +53,6 @@ function Confirmation() {
   const leadBib = lead.bib ?? "";
   const ev = eventById(lead.eventId);
   const others = b.participants.slice(1);
-  const code = b.stepsCode;
 
   return (
     <div className="relative overflow-hidden">
@@ -76,14 +74,14 @@ function Confirmation() {
           <div className="relative mt-10 w-full max-w-xl">
             <motion.div initial={{ opacity: 0, scale: 0.4, rotate: -14, y: 60 }} animate={{ opacity: 1, scale: 1, rotate: -2, y: 0 }} transition={{ type: "spring", stiffness: 160, damping: 14, delay: 0.55 }}>
               <Tilt max={6}>
-                <Bib number={leadBib} eventId={lead.eventId as never} name={lead.bibName || undefined} qr={`R4I:${b.reference}:${leadBib}`} />
+                <Bib number={leadBib} eventId={lead.eventId as never} qr={`R4I:${b.reference}:${leadBib}`} />
               </Tilt>
             </motion.div>
             {others.length > 0 && (
               <div className="mt-6 grid grid-cols-2 gap-4 sm:gap-6">
                 {others.map((p, i) => (
                   <motion.div key={p.id} initial={{ opacity: 0, y: 40, rotate: i % 2 ? 10 : -10 }} animate={{ opacity: 1, y: 0, rotate: i % 2 ? 2.5 : -2.5 }} transition={{ type: "spring", stiffness: 160, damping: 16, delay: 1.1 + i * 0.15 }}>
-                    <Bib number={p.bib ?? ""} eventId={p.eventId as never} name={p.bibName || undefined} />
+                    <Bib number={p.bib ?? ""} eventId={p.eventId as never} />
                     <p className="mt-2 text-center text-sm font-semibold text-navy">
                       {p.fullName.split(" ")[0]} <span className="font-normal text-muted">· {eventById(p.eventId).name}</span>
                     </p>
@@ -93,25 +91,7 @@ function Confirmation() {
             )}
           </div>
 
-          {code && (
-            <motion.button
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 1.5 }}
-              onClick={() => {
-                navigator.clipboard?.writeText(code).catch(() => {});
-                toast.success("Steps challenge code copied", { description: `Share ${code} with friends and family.` });
-              }}
-              className="mt-8 flex items-center gap-3 rounded-full bg-cobalt-50 py-2 pl-2 pr-4 text-cobalt ring-1 ring-cobalt/15 transition-colors hover:bg-cobalt-100"
-            >
-              <span className="grid size-8 place-items-center rounded-full bg-cobalt text-white">
-                <Footprints weight="fill" className="size-4" />
-              </span>
-              <span className="text-sm font-semibold">Steps challenge code</span>
-              <span className="font-mono text-sm font-bold">{code}</span>
-              <Copy weight="bold" className="size-4" />
-            </motion.button>
-          )}
+          <BibNote className="mt-8" />
 
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.6 }} className="mt-8 grid grid-cols-1 w-full max-w-xl gap-3 sm:grid-cols-2">
             <Button size="lg" icon={<ShareNetwork weight="bold" className="size-5" />} onClick={() => setShare(true)}>
@@ -124,10 +104,10 @@ function Confirmation() {
               onClick={() =>
                 downloadIcs({
                   title: `Run for Independence: ${ev.name}`,
-                  start: "20270130T053000Z",
-                  end: "20270130T110000Z",
+                  start: "20270130T063000Z",
+                  end: "20270130T103000Z",
                   location: `${RUN.venue}, ${RUN.venueArea}`,
-                  description: `Bib ${leadBib}. Gates open 05:30, ${ev.name} starts ${ev.start}.`,
+                  description: `Bib ${leadBib}. Gates open ${RUN.gatesOpen}, the ${ev.name} starts at ${RUN.start}.`,
                 })
               }
             >
@@ -137,9 +117,8 @@ function Confirmation() {
 
           <motion.ul initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.75 }} className="mt-8 w-full max-w-xl divide-y divide-line border-y border-line text-left">
             {[
-              { href: "/my-entry", icon: ChatCircleText, t: "Confirmation by text and email", s: "With a QR code for race-pack collection" },
-              { href: "/my-entry", icon: Package, t: `Race packs: ${RUN.racePacksShort}`, s: `10:00 to 17:00 at ${RUN.venue}.${b.participants.length > 1 ? ` One person can collect for all ${b.participants.length}.` : ""}` },
-              { href: "/my-entry", icon: UserCircle, t: "Manage your entry", s: `Change sizes or bib names until ${RUN.kitLock}` },
+              { href: "/my-entry", icon: ChatCircleText, t: "Confirmation by text and email", s: "With your bib numbers and a QR code" },
+              { href: "/my-entry", icon: UserCircle, t: "Manage your entry", s: "See your bibs, or give a place to someone else until 9 Jan" },
             ].map((x) => (
               <li key={x.t}>
                 <Link href={x.href} className="group flex items-center gap-4 py-4">
@@ -170,10 +149,10 @@ function Confirmation() {
             <ol className="mt-4 space-y-4">
               {[
                 { t: "Now", s: "Your bibs are here and in My entry", done: true },
-                { t: "Sat 9 Jan", s: "Kit and bib names lock for printing", done: false },
+                { t: "Before race day", s: "We tell you where and when to collect your bib", done: false },
                 { t: "Sat 23 Jan", s: "Reminder: 7 days to go", done: false },
-                { t: RUN.racePacksShort, s: "Collect race packs with your QR code", done: false },
-                { t: "Sat 30 Jan, 05:30", s: "Gates open at Independence Stadium", done: false },
+                { t: `Sat 30 Jan, ${RUN.gatesOpen}`, s: "Gates open at Independence Stadium", done: false },
+                { t: RUN.start, s: "The 5 km run and the Heritage Walk start", done: false },
               ].map((x) => (
                 <li key={x.t} className="flex gap-3">
                   {x.done ? <CheckCircle weight="fill" className="mt-0.5 size-5 shrink-0 text-forest" /> : <span className={cn("mt-1 size-3.5 shrink-0 rounded-full border-2 border-line-strong")} />}
@@ -191,3 +170,4 @@ function Confirmation() {
     </div>
   );
 }
+

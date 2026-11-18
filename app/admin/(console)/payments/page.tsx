@@ -55,7 +55,8 @@ export default function Payments() {
     { v: "waiting" as const, l: "Waiting bookings", n: data?.pending.length ?? 0 },
     { v: "pledges" as const, l: "Steps pledges", n: data?.pledges.length ?? 0 },
     { v: "matched" as const, l: "Matched", n: matched.length },
-  ];
+    // The steps challenge was withdrawn; its tab only shows while old pledges are still waiting.
+  ].filter((t) => t.v !== "pledges" || t.n > 0);
 
   return (
     <div className="mx-auto max-w-7xl">

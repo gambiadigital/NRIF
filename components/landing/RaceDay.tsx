@@ -1,66 +1,24 @@
 "use client";
 
-import { useState } from "react";
-import Image from "next/image";
-import { AnimatePresence, motion } from "motion/react";
-import { Drop, FirstAid, Package, Backpack, MapPin } from "@phosphor-icons/react";
-import { RUN, TIMELINE } from "@/lib/data";
+import { FirstAid, MapTrifold } from "@phosphor-icons/react";
+import { RUN, TIMELINE, TIMELINE_NOTE } from "@/lib/data";
 import { Reveal, RiseLines } from "@/components/ui/motion";
 import { cn } from "@/lib/cn";
 
-/* Illustrative routes over a drawn Bakau coast. Marked as a draft until NRIF confirms the course. */
-const ROUTES = {
-  "21k": {
-    label: "21K",
-    color: "#D7141A",
-    d: "M372 306 C372 270 380 240 392 214 C404 186 404 168 388 156 C356 142 300 150 252 148 C196 146 150 156 104 160 C70 163 46 166 30 176 C18 186 30 200 52 200 C96 200 142 196 188 192 C230 188 262 196 284 214 C306 232 318 262 336 286 C346 300 358 308 372 306",
-    km: "21.1 km",
-  },
-  "10k": {
-    label: "10K",
-    color: "#1F3C99",
-    d: "M372 306 C372 270 380 240 392 214 C404 186 404 168 388 156 C356 142 300 150 252 150 C220 150 196 156 186 168 C178 182 196 192 222 192 C252 192 276 204 296 228 C314 252 328 282 346 298 C354 305 364 308 372 306",
-    km: "10 km",
-  },
-  "5k": {
-    label: "5K",
-    color: "#135F40",
-    d: "M372 306 C372 276 378 252 392 230 C402 212 420 204 446 210 C474 218 486 244 476 270 C466 296 440 312 410 316 C394 318 380 314 372 306",
-    km: "5 km",
-  },
-  heritage: {
-    label: "Walk",
-    color: "#0b1b3a",
-    d: "M372 306 C366 290 372 276 388 272 C406 268 420 282 418 298 C416 314 398 322 384 318 C376 316 372 312 372 306",
-    km: "1.965 km",
-  },
-} as const;
-type RouteKey = keyof typeof ROUTES;
-
+/* The stadium on a drawn Bakau coast. NRIF will announce the route; until then only the start and finish show. */
 function CourseMap() {
-  const [route, setRoute] = useState<RouteKey>("10k");
-  const r = ROUTES[route];
   return (
     <div className="relative overflow-hidden rounded-[1.75rem] border border-line bg-[#f3efe4]">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line/80 bg-white/60 px-5 py-4 backdrop-blur">
         <div>
           <p className="text-[0.9375rem] font-bold text-navy">Course map</p>
-          <p className="text-xs text-muted">Draft route, confirmed in December</p>
+          <p className="text-xs text-muted">Route will be announced soon</p>
         </div>
-        <div className="flex gap-1 rounded-full bg-sand p-1">
-          {(Object.keys(ROUTES) as RouteKey[]).map((k) => (
-            <button
-              key={k}
-              onClick={() => setRoute(k)}
-              className={cn("relative h-8 rounded-full px-3 text-[0.8125rem] font-bold transition-colors", route === k ? "text-white" : "text-muted hover:text-navy")}
-            >
-              {route === k && <motion.span layoutId="route-pill" className="absolute inset-0 rounded-full" style={{ background: ROUTES[k].color }} transition={{ type: "spring", stiffness: 500, damping: 36 }} />}
-              <span className="relative">{ROUTES[k].label}</span>
-            </button>
-          ))}
-        </div>
+        <span className="flex items-center gap-1.5 rounded-full bg-sand px-3 py-1.5 text-[0.8125rem] font-semibold text-navy">
+          <MapTrifold weight="duotone" className="size-4" /> Coming soon
+        </span>
       </div>
-      <svg viewBox="0 0 520 360" className="block w-full" role="img" aria-label={`Draft ${r.label} route from Independence Stadium along the Bakau coast`}>
+      <svg viewBox="0 0 520 360" className="block w-full" role="img" aria-label="Independence Stadium in Bakau, the start and finish. The route will be announced soon.">
         <defs>
           <pattern id="waves" width="22" height="10" patternUnits="userSpaceOnUse">
             <path d="M0 6 Q5.5 2 11 6 T22 6" fill="none" stroke="#9fc1d8" strokeWidth="1" opacity=".55" />
@@ -91,12 +49,6 @@ function CourseMap() {
           <ellipse rx="34" ry="22" fill="#fff" stroke="#cfc8b9" />
           <ellipse rx="22" ry="12" fill="#cfe3c8" stroke="#d34e3f" strokeWidth="2.5" />
         </g>
-        <AnimatePresence mode="wait">
-          <motion.g key={route}>
-            <motion.path d={r.d} fill="none" stroke="white" strokeWidth="9" strokeLinecap="round" strokeLinejoin="round" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} exit={{ opacity: 0 }} transition={{ duration: 1.6, ease: [0.65, 0, 0.35, 1] }} />
-            <motion.path d={r.d} fill="none" stroke={r.color} strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} exit={{ opacity: 0 }} transition={{ duration: 1.6, ease: [0.65, 0, 0.35, 1] }} />
-          </motion.g>
-        </AnimatePresence>
         {/* labels */}
         <g fontFamily="var(--font-flex)" fontSize="11" fontWeight="700" fill="#0b1b3a">
           <text x="372" y="346" opacity=".7" textAnchor="middle">Independence Stadium</text>
@@ -111,28 +63,10 @@ function CourseMap() {
             S/F
           </text>
         </g>
-        {route !== "heritage" &&
-          [
-            [392, 214],
-            [252, 149],
-          ].map(([x, y], i) => (
-            <g key={i} transform={`translate(${x} ${y})`}>
-              <circle r="8" fill="#2a3181" />
-              <path d="M0 -4.2C2 -1.6 3 0 3 1.4A3 3 0 0 1 -3 1.4C-3 0 -2 -1.6 0 -4.2Z" fill="white" />
-            </g>
-          ))}
       </svg>
-      <div className="flex items-center justify-between border-t border-line/80 bg-white/60 px-5 py-3 text-[0.8125rem]">
-        <span className="flex items-center gap-2 font-semibold text-navy">
-          <span className="h-1.5 w-6 rounded-full" style={{ background: r.color }} />
-          {r.label} · {r.km}
-        </span>
-        <span className="flex items-center gap-1.5 text-muted">
-          <span className="grid size-4 place-items-center rounded-full bg-cobalt">
-            <Drop weight="fill" className="size-2.5 text-white" />
-          </span>
-          Water
-        </span>
+      <div className="flex items-center gap-2 border-t border-line/80 bg-white/60 px-5 py-3 text-[0.8125rem] font-semibold text-navy">
+        <span className="grid size-5 place-items-center rounded-full bg-navy text-[0.5rem] font-extrabold text-white">S/F</span>
+        Start and finish at {RUN.venue}, {RUN.venueArea}
       </div>
     </div>
   );
@@ -148,53 +82,40 @@ export function RaceDay() {
               <p className="font-label text-forest">Race day · {RUN.dateLong}</p>
             </Reveal>
             <h2 className="mt-5 font-race text-[clamp(2.8rem,7vw,6.2rem)] text-navy">
-              <RiseLines lines={["Gates open", <span key="t" className="text-ember">05:30</span>]} />
+              <RiseLines lines={["Gates open", <span key="t" className="text-ember">{RUN.gatesOpen}</span>]} />
             </h2>
             <ol className="relative mt-10">
               <span className="absolute bottom-3 left-[4.35rem] top-3 w-px bg-line" aria-hidden />
               {TIMELINE.map((t, i) => (
                 <Reveal as="li" key={t.time} delay={i * 0.06} className="relative flex items-start gap-6 py-3">
                   <span className="w-14 shrink-0 pt-0.5 text-right font-mono text-[0.9375rem] font-semibold text-navy tabular">{t.time}</span>
-                  <span className={cn("relative z-10 mt-1.5 size-3 shrink-0 rounded-full ring-4 ring-paper", i === 2 ? "bg-ember" : "bg-navy")} />
+                  <span className={cn("relative z-10 mt-1.5 size-3 shrink-0 rounded-full ring-4 ring-paper", i === 1 ? "bg-ember" : "bg-navy")} />
                   <span>
                     <span className="block text-[1.0625rem] font-bold text-navy">{t.label}</span>
                     <span className="block text-sm text-muted">{t.note}</span>
                   </span>
                 </Reveal>
               ))}
+              <Reveal as="li" delay={TIMELINE.length * 0.06} className="relative flex items-start gap-6 py-3">
+                <span className="w-14 shrink-0" />
+                <span className="relative z-10 mt-1.5 size-3 shrink-0 rounded-full border-2 border-line-strong bg-paper ring-4 ring-paper" />
+                <span className="block max-w-sm text-sm text-muted">{TIMELINE_NOTE}</span>
+              </Reveal>
             </ol>
           </div>
           <div className="space-y-4">
             <Reveal>
               <CourseMap />
             </Reveal>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Reveal delay={0.05} className="relative overflow-hidden rounded-[1.5rem] bg-navy p-6 text-white">
-                <Image src="/media/race-pack.webp" alt="" fill sizes="(min-width: 640px) 25vw, 100vw" className="object-cover opacity-35" />
-                <div className="relative">
-                  <Package weight="duotone" className="size-8 text-white" />
-                  <p className="mt-6 text-lg font-bold">Race-pack collection</p>
-                  <p className="mt-1 text-sm text-white/75">{RUN.racePacks} at {RUN.venue}. Show the QR code from your email.</p>
-                </div>
-              </Reveal>
-              <div className="grid gap-4">
-                {[
-                  { icon: Backpack, t: "Bag drop on the track", d: "Free, from 05:30" },
-                  { icon: FirstAid, t: "Medics on the course", d: "We ask everyone for an emergency contact" },
-                  { icon: MapPin, t: "Getting there", d: "Shuttles from Serrekunda and Banjul" },
-                ].map((x, i) => (
-                  <Reveal key={x.t} delay={0.1 + i * 0.05} className="flex items-center gap-4 rounded-[1.25rem] border border-line bg-white p-4">
-                    <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-forest-50 text-forest">
-                      <x.icon weight="duotone" className="size-6" />
-                    </span>
-                    <span>
-                      <span className="block font-semibold text-navy">{x.t}</span>
-                      <span className="block text-sm text-muted">{x.d}</span>
-                    </span>
-                  </Reveal>
-                ))}
-              </div>
-            </div>
+            <Reveal delay={0.05} className="flex items-center gap-4 rounded-[1.25rem] border border-line bg-white p-4">
+              <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-forest-50 text-forest">
+                <FirstAid weight="duotone" className="size-6" />
+              </span>
+              <span>
+                <span className="block font-semibold text-navy">Medics on the course</span>
+                <span className="block text-sm text-muted">We ask everyone for an emergency contact</span>
+              </span>
+            </Reveal>
           </div>
         </div>
       </div>

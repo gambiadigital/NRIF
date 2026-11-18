@@ -2,14 +2,14 @@
 
 import Image from "next/image";
 import { motion } from "motion/react";
-import { Flask, Plant, Lightbulb, ArrowUpRight } from "@phosphor-icons/react";
-import { RUN } from "@/lib/data";
+import { ArrowUpRight, Flask, Plant, Lightbulb, Heartbeat, GlobeHemisphereWest, Cpu, Leaf, UsersThree, BookOpen, type Icon } from "@phosphor-icons/react";
+import { RUN, PRIORITIES } from "@/lib/data";
 import { useStats } from "@/lib/client";
 import { Marquee, Reveal, CountUp, RiseLines } from "@/components/ui/motion";
 import { NrifStacked } from "@/components/brand";
 
 export function Ticker() {
-  const items = ["21K Half marathon", "10K", "5K", "1.965K Heritage walk", "10K Virtual", "5K Virtual", "62 Cities, One Gambia", "One Day, One Nation"];
+  const items = ["5 km Run", "1.965 km Heritage Walk", "Diaspora Virtual Run", "62 Cities, One Gambia", "One Day, One Nation"];
   return (
     <div className="relative z-10 -mt-px overflow-hidden bg-navy py-4 text-white">
       <Marquee>
@@ -28,11 +28,11 @@ export function Ticker() {
   );
 }
 
-const PILLARS = [
-  { icon: Flask, title: "Gambian research", text: "Support for researchers working on the questions that matter here: health, food, climate and more." },
-  { icon: Plant, title: "Young innovators", text: "Backing for young Gambians with ideas worth building at home." },
-  { icon: Lightbulb, title: "A fund that lasts", text: "An endowment keeps its capital working, so today's entries keep giving for years." },
-];
+const ICONS: Record<string, Icon> = { flask: Flask, plant: Plant, lightbulb: Lightbulb, heart: Heartbeat, globe: GlobeHemisphereWest, cpu: Cpu, leaf: Leaf, users: UsersThree, book: BookOpen };
+function PriorityIcon({ name, className }: { name: string; className?: string }) {
+  const I = ICONS[name] ?? Lightbulb;
+  return <I weight="duotone" className={className} />;
+}
 
 export function WhyWeRun() {
   const stats = useStats().data;
@@ -57,9 +57,9 @@ export function WhyWeRun() {
               </p>
             </Reveal>
             <div className="mt-10 grid grid-cols-1 gap-3 sm:grid-cols-3">
-              {PILLARS.map((p, i) => (
+              {PRIORITIES.map((p, i) => (
                 <Reveal key={p.title} delay={0.1 + i * 0.08} className="rounded-[1.25rem] border border-line bg-white p-5">
-                  <p.icon weight="duotone" className="size-7 text-forest" />
+                  <PriorityIcon name={p.icon} className="size-7 text-forest" />
                   <p className="mt-4 font-semibold text-navy">{p.title}</p>
                   <p className="mt-1.5 text-sm leading-relaxed text-muted">{p.text}</p>
                 </Reveal>
@@ -106,14 +106,15 @@ export function WhyWeRun() {
 
         <div className="mt-20 grid grid-cols-2 gap-px overflow-hidden rounded-[1.75rem] border border-line bg-line lg:grid-cols-4">
           {[
-            { v: stats?.entries ?? 0, l: "Runners and walkers so far", f: (n: number) => Math.round(n).toLocaleString("en-GB") },
-            { v: 6, l: "Ways to take part", f: (n: number) => String(Math.round(n)) },
+            { v: stats?.entries ?? 0, l: `Runners and walkers so far, of ${RUN.participantGoal.toLocaleString("en-GB")}`, f: (n: number) => Math.round(n).toLocaleString("en-GB"), of: RUN.participantGoal },
+            { v: 3, l: "Ways to take part", f: (n: number) => String(Math.round(n)) },
             { v: stats?.cities.length ?? 0, l: `Cities abroad, of ${RUN.citiesGoal}`, f: (n: number) => String(Math.round(n)) },
-            { v: 1965, l: "Metres in the Heritage walk", f: (n: number) => Math.round(n).toLocaleString("en-GB") },
+            { v: 1965, l: "Metres in the Heritage Walk", f: (n: number) => Math.round(n).toLocaleString("en-GB") },
           ].map((s) => (
             <div key={s.l} className="bg-white p-6 sm:p-8">
               <p className="font-bib text-[clamp(2.8rem,6vw,4.6rem)] text-navy">
                 <CountUp key={s.v} to={s.v} format={s.f} />
+                {"of" in s && s.of ? <span className="text-[0.4em] text-faint">/{s.of.toLocaleString("en-GB")}</span> : null}
               </p>
               <p className="mt-2 flex items-center gap-1.5 text-sm text-muted">
                 {s.l}

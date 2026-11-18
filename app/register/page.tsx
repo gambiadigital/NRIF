@@ -6,6 +6,7 @@ import { House, GlobeHemisphereWest, MapPin, Sparkle, Check, Clock } from "@phos
 import { CITIES, CURRENCIES, RUN, type RaceEvent } from "@/lib/data";
 import { useLiveEvents, useStats } from "@/lib/client";
 import { useBooking, entryPrice, fmt, lead } from "@/lib/store";
+import { isoForCity } from "@/lib/format";
 import { Segmented, Field, Combobox, Badge, RadioDot } from "@/components/ui/fields";
 import { Button } from "@/components/ui/button";
 import { StepFooter, StepTitle, SectionCard } from "@/components/register/Shell";
@@ -26,9 +27,21 @@ export default function ChooseEvent() {
 
   const pick = (ev: RaceEvent) => b.patchParticipant(me.id, { eventId: ev.id });
 
+  // Abroad, phone numbers start in the country of the city, not +220, unless one has already been typed.
+  function pickCity(city: string) {
+    b.patch({ city });
+    const iso = isoForCity(city);
+    if (!iso) return;
+    const c = useBooking.getState().contact;
+    b.patchContact({
+      ...(c.phone.digits ? {} : { phone: { ...c.phone, iso } }),
+      ...(c.emergency.phone.digits ? {} : { emergency: { ...c.emergency, phone: { ...c.emergency.phone, iso } } }),
+    });
+  }
+
   return (
     <div>
-      <StepTitle eyebrow={`${RUN.name} ${RUN.edition}`} title="Where do you live?" sub="It sets your currency and how you pay. Every event stays open to everyone." />
+      <StepTitle eyebrow={`${RUN.name} ${RUN.edition}`} title="Where do you live?" sub="It sets your currency, your events and how you pay. The Diaspora Virtual Run is for people who live abroad." />
 
       <Segmented
         value={b.residence}
@@ -45,7 +58,7 @@ export default function ChooseEvent() {
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }} className="overflow-hidden">
             <div className="grid max-w-xl gap-4 pt-6">
               <Field label="City" htmlFor="city" required>
-                <Combobox id="city" value={b.city} onChange={(v) => b.patch({ city: v })} options={CITY_OPTIONS} placeholder="Start typing your city" icon={<MapPin weight="bold" className="size-4" />} />
+                <Combobox id="city" value={b.city} onChange={pickCity} options={CITY_OPTIONS} placeholder="Start typing your city" icon={<MapPin weight="bold" className="size-4" />} />
               </Field>
               <AnimatePresence>
                 {counted && (
@@ -83,27 +96,30 @@ export default function ChooseEvent() {
 
       <div className="mt-10 flex items-center justify-between">
         <h2 className="text-xl font-bold text-navy">Choose your event</h2>
-        {abroad && <Badge tone="cobalt">Suggested donations</Badge>}
       </div>
 
       <div className="mt-4 space-y-2.5">
         {(abroad ? virtual : inPerson).map((ev) => (
-          <EventRow key={ev.id} ev={ev} on={me.eventId === ev.id} price={fmt(b, entryPrice(b, ev.id))} suggested={abroad} onPick={() => pick(ev)} />
+          <EventRow key={ev.id} ev={ev} on={me.eventId === ev.id} price={fmt(b, entryPrice(b, ev.id))} note={abroad && b.currency !== "GBP" ? `about £${ev.suggestedGBP}` : undefined} onPick={() => pick(ev)} />
         ))}
       </div>
 
-      <p className="mb-3 mt-8 font-label text-muted">{abroad ? "Home for race day?" : "Or run from anywhere"}</p>
-      <div className="space-y-2.5">
-        {(abroad ? inPerson : virtual).map((ev) => (
-          <EventRow key={ev.id} ev={ev} on={me.eventId === ev.id} price={fmt(b, entryPrice(b, ev.id))} suggested={abroad} onPick={() => pick(ev)} />
-        ))}
-      </div>
+      {abroad && (
+        <>
+          <p className="mb-3 mt-8 font-label text-muted">Home for race day?</p>
+          <div className="space-y-2.5">
+            {inPerson.map((ev) => (
+              <EventRow key={ev.id} ev={ev} on={me.eventId === ev.id} price={fmt(b, entryPrice(b, ev.id))} note={b.currency !== "GBP" ? `about £${ev.suggestedGBP}` : undefined} onPick={() => pick(ev)} />
+            ))}
+          </div>
+        </>
+      )}
 
       <SectionCard className="mt-8 border-dashed bg-transparent shadow-none">
         <div className="flex items-start gap-3 text-sm text-muted">
           <Sparkle weight="fill" className="mt-0.5 size-4 shrink-0 text-ember" />
           <p>
-            Registering children or a team? Add them at step 3. One booking can hold the whole family, and under 18s can walk the Heritage walk at any age with
+            Registering children or a team? Add them at step 3. One booking can hold the whole family, and under 18s can walk the Heritage Walk at any age with
             you as their guardian.
           </p>
         </div>
@@ -118,7 +134,7 @@ export default function ChooseEvent() {
   );
 }
 
-function EventRow({ ev, on, price, suggested, onPick }: { ev: RaceEvent; on: boolean; price: string; suggested: boolean; onPick: () => void }) {
+function EventRow({ ev, on, price, note, onPick }: { ev: RaceEvent; on: boolean; price: string; note?: string; onPick: () => void }) {
   return (
     <motion.button
       layout
@@ -149,7 +165,7 @@ function EventRow({ ev, on, price, suggested, onPick }: { ev: RaceEvent; on: boo
           <Badge tone={ev.minAge >= 18 ? "ember" : ev.minAge === 0 ? "forest" : "cobalt"}>{ev.ageLabel}</Badge>
         </span>
         <span className="mt-0.5 flex items-center gap-2 text-sm text-muted">
-          {ev.kind === "virtual" ? `Any day, ${RUN.virtualWindow}` : ev.blurb}
+          {ev.kind === "virtual" ? `5 or 10 km, any day ${RUN.virtualWindow}` : ev.blurb}
           {ev.kind === "in-person" && (
             <span className="hidden items-center gap-1 sm:flex">
               · <Clock className="size-3.5" /> {ev.start}
@@ -159,7 +175,7 @@ function EventRow({ ev, on, price, suggested, onPick }: { ev: RaceEvent; on: boo
       </span>
       <span className="text-right">
         <span className="block whitespace-nowrap font-bold text-navy tabular">{price}</span>
-        {suggested && <span className="block text-[0.6875rem] text-faint">suggested</span>}
+        {note && <span className="block text-[0.6875rem] text-faint">{note}</span>}
       </span>
     </motion.button>
   );

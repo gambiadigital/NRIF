@@ -29,8 +29,8 @@ export function Abroad() {
             </h2>
             <Reveal delay={0.1}>
               <p className="mt-6 max-w-lg text-lg leading-relaxed text-white/70">
-                Living in London, Atlanta or Stockholm? Run the 10K or 5K virtual wherever you are, any day from {RUN.virtualWindow}, and your city lights up on the
-                map. Home for January? Every in-person event is open to you too.
+                Living in London, Atlanta or Stockholm? Join the Diaspora Virtual Run: 5 or 10 km wherever you are, any day from {RUN.virtualWindow}, for £{RUN.virtualPriceGBP}, and your city lights up on the
+                map. Home for January? The 5 km run and the Heritage Walk are open to you too.
               </p>
             </Reveal>
             <Reveal delay={0.15} className="mt-8 flex items-end gap-6">
@@ -86,8 +86,8 @@ export function Abroad() {
             <Image src="/media/london-virtual.webp" alt="A Gambian runner checking his watch on a rainy London riverside at dawn" fill sizes="(min-width: 1024px) 55vw, 100vw" className="object-cover" />
             <div className="absolute inset-0 bg-gradient-to-r from-navy/90 via-navy/40 to-transparent" />
             <div className="relative flex h-full max-w-sm flex-col justify-end p-7">
-              <p className="flex items-center gap-2.5 font-label text-white"><FlagBars small />10K and 5K virtual</p>
-              <p className="mt-3 text-2xl font-bold leading-snug">Can&apos;t be in Bakau on the day? Run your own route, wherever you are.</p>
+              <p className="flex items-center gap-2.5 font-label text-white"><FlagBars small />Diaspora Virtual Run · £{RUN.virtualPriceGBP}</p>
+              <p className="mt-3 text-2xl font-bold leading-snug">Can&apos;t be in Bakau on the day? Run 5 or 10 km on your own route, wherever you are.</p>
               <p className="mt-3 text-sm text-white/65">E-bibs start with a V</p>
             </div>
           </Reveal>

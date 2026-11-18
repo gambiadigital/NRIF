@@ -117,7 +117,7 @@ export default function Campaigns() {
                 <br />
                 {RUN.venue}, {RUN.venueArea}
               </p>
-              <p className="mt-[2cqw] text-[3.2cqw] text-white/65">21K · 10K · 5K · 1.965K Heritage walk · Virtual</p>
+              <p className="mt-[2cqw] text-[3.2cqw] text-white/65">5 km Run · 1.965 km Heritage Walk · Diaspora Virtual Run</p>
               <div className="mt-auto flex items-end justify-between gap-[4cqw]">
                 <div className="rounded-[2cqw] bg-white p-[2.4cqw]">
                   <QRCodeSVG value={url} size={160} fgColor="#0b1b3a" className="block size-[30cqw]" />

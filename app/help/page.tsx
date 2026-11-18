@@ -26,7 +26,7 @@ export default function Help() {
               <input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="Search: children, refunds, race packs…"
+                placeholder="Search: children, refunds, start time…"
                 className="h-14 w-full rounded-full border border-white/15 bg-white/10 pl-14 pr-5 text-white outline-none backdrop-blur placeholder:text-white/45 focus:border-white/60"
               />
             </div>

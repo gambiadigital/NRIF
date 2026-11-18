@@ -44,7 +44,7 @@ export const metadata: Metadata = {
   icons: { icon: "/brand/icon.png" },
   openGraph: {
     title: "Run for Independence 2027",
-    description: "One Day, One Nation. 21K, 10K, 5K, the 1.965K Heritage walk and virtual runs.",
+    description: "One Day, One Nation. A 5 km run and the 1.965 km Heritage Walk at Independence Stadium, and a virtual run for Gambians abroad.",
     images: ["/media/hero-coast.webp"],
   },
 };

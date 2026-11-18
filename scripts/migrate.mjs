@@ -1,5 +1,6 @@
-// Applies db/schema.sql then db/seed.sql to DATABASE_URL (read from .env.local if not set). Safe to re-run.
-//   node scripts/migrate.mjs
+// Applies db/schema.sql then db/seed.sql to DATABASE_URL (read from .env.local if not set), then any extra SQL files
+// named on the command line (one-off data changes such as db/2026-11-18-go-live.sql). Safe to re-run.
+//   node scripts/migrate.mjs [db/extra.sql ...]
 import { readFileSync, existsSync } from "node:fs";
 import path from "node:path";
 import { Pool } from "@neondatabase/serverless";
@@ -17,8 +18,8 @@ if (!process.env.DATABASE_URL) {
 }
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-for (const file of ["schema.sql", "seed.sql"]) {
-  const sql = readFileSync(path.join(root, "db", file), "utf8");
+for (const file of ["db/schema.sql", "db/seed.sql", ...process.argv.slice(2)]) {
+  const sql = readFileSync(path.resolve(root, file), "utf8");
   await pool.query(sql);
   console.log("applied", file);
 }

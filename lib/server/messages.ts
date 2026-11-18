@@ -31,7 +31,7 @@ const SUBJECTS: Record<string, (v: Record<string, string>) => string> = {
   confirm: (v) => `You're in: ${v.event}, bib ${v.bib}`,
   "confirm-virtual": (v) => `You're in: ${v.event}, e-bib ${v.bib}`,
   reminder3: (v) => `Your place is held until ${v.hold}`,
-  "race-7": () => "7 days to go: race-pack collection",
+  "race-7": () => "7 days to go: Run for Independence",
   "race-1": () => "Tomorrow: Run for Independence",
   "virtual-open": () => "Your run window is open",
 };

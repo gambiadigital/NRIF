@@ -67,7 +67,7 @@ const blank = (): Booking => ({
   residence: "gambia",
   city: "",
   currency: "GMD",
-  participants: [{ ...newParticipant("10k", true), id: "lead" }],
+  participants: [{ ...newParticipant("5k", true), id: "lead" }],
   contact: { phone: { iso: "GM", digits: "" }, email: "", town: "", emergency: { name: "", relation: "", phone: { iso: "GM", digits: "" } } },
   teamCode: "",
   steps: false,
@@ -102,13 +102,17 @@ export const useBooking = create<Booking & Actions>()(
         if (s.residence === r) return;
         const lead = s.participants[0]!;
         const ev = eventById(lead.eventId);
+        // Phone codes follow: back home they return to +220 unless a number is already typed.
+        const home = (ph: Phone) => (r === "gambia" && !ph.digits ? { ...ph, iso: "GM" } : ph);
         set({
+          contact: { ...s.contact, phone: home(s.contact.phone), emergency: { ...s.contact.emergency, phone: home(s.contact.emergency.phone) } },
           residence: r,
           currency: r === "gambia" ? "GMD" : s.currency === "GMD" ? "GBP" : s.currency,
           payMethod: r === "gambia" ? "wave" : "remit",
           donation: 0,
           participants: s.participants.map((p, i) =>
-            i === 0 ? { ...p, eventId: r === "abroad" && ev.kind === "in-person" ? "10k-virtual" : r === "gambia" && ev.kind === "virtual" ? "10k" : p.eventId } : p,
+            // The virtual run is only for people abroad; everyone else at home picks between the 5 km and the walk.
+            r === "abroad" && i === 0 && ev.kind === "in-person" ? { ...p, eventId: "virtual" } : r === "gambia" && eventById(p.eventId).kind === "virtual" ? { ...p, eventId: i === 0 ? "5k" : "heritage" } : p,
           ),
         });
       },
@@ -123,7 +127,7 @@ export const useBooking = create<Booking & Actions>()(
       },
     }),
     {
-      name: "r4i-booking-v2",
+      name: "r4i-booking-v3",
       storage: createJSONStorage(() => sessionStorage),
       skipHydration: true,
       partialize: (s) => {

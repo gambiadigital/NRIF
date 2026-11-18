@@ -15,7 +15,7 @@ type Template = { id: string; name: string; channel: string; when_label: string;
 type Log = { id: number; channel: string; to_addr: string; template: string; status: string; error: string | null; created_at: string; reference: string | null };
 
 // Sample values so the counter shows the real length once a template is filled in.
-const FILL: Record<string, string> = { "{first}": "Fatoumata", "{event}": "21K Half marathon", "{bib}": "1047", "{bibs}": "1047, 7012, 7013", "{start}": "07:00", "{link}": "nrif.vercel.app/b/7Q4K-a8Kd2f3x", "{hold}": "Sun 25 Oct, 23:59", "{amount}": "GMD 1,150", "{ref}": "RFI-7Q4K" };
+const FILL: Record<string, string> = { "{first}": "Fatoumata", "{event}": "5 km Run", "{bib}": "4047", "{bibs}": "4047, 7012, 7013", "{start}": "07:30", "{link}": "nrif.vercel.app/b/7Q4K-a8Kd2f3x", "{hold}": "Sun 25 Oct, 23:59", "{amount}": "GMD 1,150", "{ref}": "RFI-7Q4K" };
 const filled = (t: string) => Object.entries(FILL).reduce((s, [k, v]) => s.split(k).join(v), t);
 
 export default function AdminMessages() {

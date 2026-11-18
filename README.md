@@ -1,7 +1,8 @@
 # Run for Independence 2027 · NRIF
 
 Registration, payments and race administration for the National Research & Innovation Fund's Run for Independence
-(Saturday 30 January 2027, Independence Stadium, Bakau, plus 10K and 5K virtual runs from anywhere).
+(Saturday 30 January 2027, Independence Stadium, Bakau: a 5 km run and the 1.965 km Heritage Walk, gates 06:30,
+start 07:30, plus the Diaspora Virtual Run, 5 or 10 km from anywhere, for people who live abroad).
 
 Built from the storyboard *Registration from User POV*: every frame is a working screen, backed by a Neon Postgres
 database.
@@ -36,6 +37,13 @@ npm run dev
 
 ## How it works
 
+**Events.** Three are on sale: the 5 km run (GMD 300) and the Heritage Walk (GMD 200) for people in The Gambia, and
+the Diaspora Virtual Run (GBP 15, shown in the payer's currency) only for people who pick Abroad. The six events from the
+first version (21K, 10K, 5K, walk, 10K and 5K virtual) were cut to three before launch; the four that went are closed in
+the database but kept, so bookings made before the change still show and can still be paid. There are no T-shirts, no
+names on bibs and no steps challenge: the bib on screen is labelled as a picture only. `db/2026-11-18-go-live.sql`
+brings a database made before the change up to date.
+
 **Registration.** Five steps (where you live and the event, your details, who is running, waiver and consents,
 payment). The server re-checks everything: ages against each event's minimum, a lead booker of 18 or over, guardians
 for under 18s, the waiver version, team codes. It prices the booking from the database, not from the browser.
@@ -44,8 +52,7 @@ for under 18s, the waiver version, team codes. It prices the booking from the da
 link, QR or number), Yonna (QR or number), Ecobank (EMV QR or account 6240050636), or Remitly/ACE from abroad. Staff
 record each receipt in **Admin → Payments**; a receipt quoting a waiting reference with the full amount matches by
 itself, anything else is matched by hand. Matching runs `confirm_booking()` in Postgres, which marks the booking paid,
-issues the next bib in each event's range (virtual entries get a `V` prefix) and gives steps-challenge bookings their
-`SC-` code, all in one transaction. The payer's screen notices within seconds and shows their bibs.
+issues the next bib in each event's range (virtual entries get a `V` prefix), all in one transaction. The payer's screen notices within seconds and shows their bibs.
 
 **Cards.** Visa and Mastercard go through the Mastercard Payment Gateway's Hosted Checkout (API version 100): the payer
 types the card on Mastercard's page, never ours. Each try is its own order (`RFI-7Q4K-C1`, `-C2`...). When the payer comes
@@ -72,7 +79,7 @@ our own signed cookie. Codes come from Neon's shared sender (`auth@mail.myneon.a
 SMTP account in **Settings → Better Auth** so codes come from NRIF and are not rate-limited.
 
 **Participants.** My entry signs in with an email code, or with the booking reference and phone number as a fallback. It shows bibs, the
-race-pack QR code, kit changes (until 9 January), place transfers, steps logging and, for virtual runners, uploading a
+booking QR code, place transfers (until 9 January) and, for virtual runners, uploading a
 run and the e-certificate once staff approve it.
 
 **Brand.** NRIF's rule: accents come from the Gambian flag (red, blue, green) or white, never yellow. Sign up buttons

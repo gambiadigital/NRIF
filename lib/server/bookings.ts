@@ -5,7 +5,7 @@ import { q, one, log } from "./db";
 import { HttpError } from "./http";
 import { queueForBooking, flushOutbox } from "./messages";
 import { cardTakes } from "./cardConfig";
-import { CURRENCIES, SHIRT_SIZES } from "@/lib/data";
+import { CURRENCIES } from "@/lib/data";
 import { raceDayAge, suggested } from "@/lib/format";
 import { WAIVER } from "@/lib/content";
 
@@ -21,8 +21,9 @@ const ParticipantIn = z.object({
   dob: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, "Enter dates of birth as DD/MM/YYYY"),
   gender: z.enum(["Female", "Male", ""]),
   eventId: z.string().min(2).max(20),
-  shirt: z.enum(SHIRT_SIZES, { message: "Choose a T-shirt size for everyone" }),
-  bibName: z.string().max(10).regex(/^[A-Z' -]*$/).default(""),
+  // No T-shirts and no names on bibs any more; older clients may still send these, and they are ignored.
+  shirt: z.string().max(4).default(""),
+  bibName: z.string().max(10).default(""),
   guardianIsLead: z.boolean().default(true),
   guardian: z
     .object({ name: z.string().max(80).default(""), relation: z.string().max(40).default(""), phone: z.object({ iso: z.string(), digits: z.string() }) })
@@ -37,7 +38,7 @@ export const BookingIn = z.object({
   contact: z.object({
     phone: Phone,
     email: z.email("Enter a valid email address"),
-    town: z.string().trim().min(2, "Enter your town or area").max(80),
+    town: z.string().trim().max(80).default(""),
     emergency: z.object({ name: z.string().trim().min(2, "Enter an emergency contact").max(80), relation: z.string().max(40).default(""), phone: Phone }),
   }),
   teamCode: z.string().trim().max(24).default(""),
@@ -69,12 +70,16 @@ export async function createBooking(input: BookingInput) {
   if (input.residence === "abroad" && !input.city.trim()) throw new HttpError(400, "Tell us which city you live in");
   if (input.residence === "gambia" && input.currency !== "GMD") throw new HttpError(400, "Entries from The Gambia are paid in dalasi");
   if (input.residence === "gambia" && input.payMethod === "remit") throw new HttpError(400, "Choose Wave, Yonna, Ecobank or a card");
+  // People abroad give their city at step 1 and are not asked for a town again.
+  const town = input.residence === "abroad" ? input.city.split(",")[0]!.trim() : input.contact.town.trim();
+  if (town.length < 2) throw new HttpError(400, "Enter your town or area");
   if (input.payMethod === "card" && !cardTakes(input.currency)) throw new HttpError(400, "Card payments are not available for this booking. Choose another way to pay.");
 
   let minors = 0;
   const people = input.participants.map((p, i) => {
     const ev = byId.get(p.eventId);
     if (!ev || !ev.open) throw new HttpError(400, `${p.fullName}: that event is not open`);
+    if (ev.kind === "virtual" && input.residence !== "abroad") throw new HttpError(400, `${p.fullName}: the ${ev.name} is for people who live abroad`);
     const age = raceDayAge(p.dob);
     if (age === null) throw new HttpError(400, `${p.fullName}: check the date of birth`);
     if (i === 0 && age < 18) throw new HttpError(400, "The person booking must be 18 or over on race day");
@@ -92,8 +97,8 @@ export async function createBooking(input: BookingInput) {
       dob: isoDate(p.dob),
       gender: p.gender || null,
       event_id: ev.id,
-      shirt: p.shirt,
-      bib_name: (p.bibName || p.fullName.trim().split(/\s+/)[0]!.toUpperCase()).slice(0, 10).replace(/[^A-Z' -]/g, ""),
+      shirt: null,
+      bib_name: null,
       guardian_is_lead: minor ? p.guardianIsLead : true,
       guardian_name: minor && !p.guardianIsLead ? p.guardian?.name.trim() ?? null : null,
       guardian_relation: minor && !p.guardianIsLead ? p.guardian?.relation ?? null : null,
@@ -141,12 +146,12 @@ export async function createBooking(input: BookingInput) {
           input.contact.phone.iso,
           input.contact.phone.digits,
           input.contact.email.trim().toLowerCase(),
-          input.contact.town.trim(),
+          town,
           input.contact.emergency.name.trim(),
           input.contact.emergency.relation || null,
           `${input.contact.emergency.phone.iso}:${input.contact.emergency.phone.digits}`,
           team,
-          input.steps,
+          false, // the steps challenge was withdrawn
           minors > 0 ? input.consents.guardian : false,
           input.consents.photos,
           input.consents.news,

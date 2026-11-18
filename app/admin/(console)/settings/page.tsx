@@ -14,9 +14,9 @@ const GROUPS = [
     title: "Contact details",
     hint: "Shown on the landing page and in Help. Leave a field empty to hide it.",
     fields: [
-      { k: "contact_whatsapp", l: "WhatsApp number", p: "+220 …" },
-      { k: "contact_phone", l: "Phone number", p: "+220 …" },
-      { k: "contact_email", l: "Email", p: "run@…" },
+      { k: "contact_whatsapp", l: "WhatsApp number", p: "+220 833796680" },
+      { k: "contact_phone", l: "Phone number", p: "+220 833796680" },
+      { k: "contact_email", l: "Email", p: "info@nrif.gm" },
       { k: "contact_office", l: "Office address", p: "" },
     ],
   },

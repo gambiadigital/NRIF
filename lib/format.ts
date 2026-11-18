@@ -54,7 +54,23 @@ export const COUNTRY_CODES = [
   { iso: "FR", dial: "+33", name: "France", pattern: [1, 2, 2, 2, 2], sample: "6 12 34 56 78" },
   { iso: "SN", dial: "+221", name: "Senegal", pattern: [2, 3, 2, 2], sample: "77 123 45 67" },
   { iso: "NG", dial: "+234", name: "Nigeria", pattern: [3, 3, 4], sample: "803 123 4567" },
+  { iso: "CA", dial: "+1", name: "Canada", pattern: [3, 3, 4], sample: "416 555 0137" },
+  { iso: "NO", dial: "+47", name: "Norway", pattern: [3, 2, 3], sample: "412 34 567" },
+  { iso: "DK", dial: "+45", name: "Denmark", pattern: [2, 2, 2, 2], sample: "20 12 34 56" },
+  { iso: "NL", dial: "+31", name: "Netherlands", pattern: [1, 4, 4], sample: "6 1234 5678" },
+  { iso: "BE", dial: "+32", name: "Belgium", pattern: [3, 2, 2, 2], sample: "470 12 34 56" },
+  { iso: "IT", dial: "+39", name: "Italy", pattern: [3, 3, 4], sample: "312 345 6789" },
+  { iso: "GH", dial: "+233", name: "Ghana", pattern: [2, 3, 4], sample: "24 123 4567" },
+  { iso: "SL", dial: "+232", name: "Sierra Leone", pattern: [2, 6], sample: "76 123456" },
+  { iso: "AE", dial: "+971", name: "United Arab Emirates", pattern: [2, 3, 4], sample: "50 123 4567" },
+  { iso: "QA", dial: "+974", name: "Qatar", pattern: [4, 4], sample: "3312 3456" },
 ];
+
+/** The phone country for a city picked at step 1, such as "London, United Kingdom" → GB. Null if we do not know it. */
+export function isoForCity(city: string) {
+  const country = city.split(",").at(-1)?.trim().toLowerCase();
+  return COUNTRY_CODES.find((c) => c.name.toLowerCase() === country)?.iso ?? null;
+}
 
 export function formatPhone(digits: string, iso: string) {
   const c = COUNTRY_CODES.find((x) => x.iso === iso) ?? COUNTRY_CODES[0];

@@ -26,7 +26,8 @@ export function Events() {
   const [cur, setCur] = useState<Currency>("GBP");
   const router = useRouter();
   const EVENTS = useLiveEvents().filter((e) => e.open !== false);
-  const ordered = res === "abroad" ? [...EVENTS].sort((a, b) => (a.kind === b.kind ? 0 : a.kind === "virtual" ? -1 : 1)) : EVENTS;
+  // The virtual run is for people who live abroad; they see it first, then the two events at home.
+  const ordered = res === "abroad" ? [...EVENTS].sort((a, b) => (a.kind === b.kind ? 0 : a.kind === "virtual" ? -1 : 1)) : EVENTS.filter((e) => e.kind === "in-person");
 
   function choose(ev: RaceEvent) {
     const s = useBooking.getState();
@@ -43,14 +44,14 @@ export function Events() {
         <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <Reveal>
-              <p className="font-label text-forest">Six ways to take part</p>
+              <p className="font-label text-forest">Three ways to take part</p>
             </Reveal>
             <h2 className="mt-5 font-race text-[clamp(2.8rem,7vw,6.2rem)] text-navy">
               <RiseLines lines={["Pick your", "distance"]} />
             </h2>
             <Reveal delay={0.1}>
               <p className="mt-6 max-w-lg text-lg text-muted">
-                All six are open to everyone. Where you live sets the price: dalasi fees at home, a suggested donation from abroad.
+                At home, the 5 km run and the Heritage Walk. From abroad, the Diaspora Virtual Run for £15, wherever you live.
               </p>
             </Reveal>
           </div>
@@ -139,7 +140,7 @@ export function Events() {
                             {price}
                           </motion.p>
                         </AnimatePresence>
-                        <p className="text-xs text-faint">{res === "gambia" ? "entry fee" : "suggested"}</p>
+                        <p className="text-xs text-faint">{res === "gambia" || cur === "GBP" ? "entry fee" : `about £${ev.suggestedGBP}`}</p>
                       </div>
                     </div>
                     <p className="mt-3 text-sm leading-relaxed text-muted">{ev.detail}</p>
@@ -167,6 +168,29 @@ export function Events() {
                 </motion.button>
               );
             })}
+            {res === "gambia" && (
+              <motion.div
+                layout
+                key="abroad-note"
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                className="flex flex-col justify-between gap-6 rounded-[1.75rem] border-2 border-dashed border-line-strong p-7"
+              >
+                <div>
+                  <span className="grid size-12 place-items-center rounded-2xl bg-cobalt text-white">
+                    <GlobeHemisphereWest weight="duotone" className="size-6" />
+                  </span>
+                  <p className="mt-5 text-xl font-bold text-navy">Live abroad?</p>
+                  <p className="mt-2 text-[0.9375rem] leading-relaxed text-muted">
+                    The Diaspora Virtual Run is for entries from abroad: 5 or 10 km, any day from 23 to 31 January, wherever you are, for £15.
+                  </p>
+                </div>
+                <button onClick={() => setRes("abroad")} className="flex h-11 w-fit items-center gap-2 rounded-full bg-navy px-5 text-sm font-semibold text-white hover:bg-navy-800">
+                  I live abroad <ArrowRight weight="bold" className="size-4" />
+                </button>
+              </motion.div>
+            )}
           </AnimatePresence>
         </motion.div>
         

@@ -1,7 +1,7 @@
 import { one } from "@/lib/server/db";
 import { json, route } from "@/lib/server/http";
 
-/** For the "Fatou is running the 10K. Join her." banner: first name and event only. */
+/** For the "Fatou is running the 5 km. Join her." banner: first name and event only. */
 export const GET = route(async (_req: Request, ctx: RouteContext<"/api/referral/[bib]">) => {
   const { bib } = await ctx.params;
   const r = await one<{ first: string; event: string }>(

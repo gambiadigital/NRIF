@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "motion/react";
 import { toPng } from "html-to-image";
 import { toast } from "sonner";
-import { CalendarBlank, Pulse, UploadSimple, Certificate, DownloadSimple, ShareNetwork, MapPin, Clock, IdentificationCard, Medal, ShieldCheck } from "@phosphor-icons/react";
+import { CalendarBlank, Pulse, UploadSimple, Certificate, DownloadSimple, ShareNetwork, MapPin, Clock, IdentificationCard, ShieldCheck } from "@phosphor-icons/react";
 import { RUN, eventById } from "@/lib/data";
 import { money } from "@/lib/format";
 import { useBookingData } from "@/lib/booking-client";
@@ -86,14 +86,14 @@ function VirtualConfirmation() {
           <motion.div initial={{ opacity: 0, scale: 0.5, rotate: -12, y: 50 }} animate={{ opacity: 1, scale: 1, rotate: -2, y: 0 }} transition={{ type: "spring", stiffness: 160, damping: 14, delay: 0.4 }} className="mt-10">
             <Tilt max={6}>
               <div ref={bibRef} className="rounded-[2rem] bg-paper p-2">
-                <Bib number={bib} eventId={lead.eventId as never} name={lead.bibName || undefined} qr={`R4I:${b.reference}:${bib}`} />
+                <Bib number={bib} eventId={lead.eventId as never} qr={`R4I:${b.reference}:${bib}`} />
               </div>
             </Tilt>
           </motion.div>
 
           <ul className="mt-8 divide-y divide-line border-y border-line">
             {[
-              { icon: CalendarBlank, t: <>Run any day, <b>{RUN.virtualWindow} Jan</b></>, s: "Wherever you are" },
+              { icon: CalendarBlank, t: <>Run <b>5 or 10 km</b> any day, <b>{RUN.virtualWindow}</b></>, s: "Wherever you are, on your own route" },
               { icon: Pulse, t: <>Record it with <b>Strava, Pacer</b> or any GPS app</>, s: "A watch is fine too" },
               { icon: UploadSimple, t: <>Upload a screenshot or link by <b>{RUN.virtualUploadBy}</b></>, s: "We check every run" },
               { icon: Certificate, t: "E-certificate once your run is checked", s: "With your time and distance" },
@@ -136,10 +136,9 @@ function VirtualConfirmation() {
             </div>
             {[
               { k: "Where", icon: MapPin, a: `${RUN.venue}`, v: "Anywhere" },
-              { k: "When", icon: Clock, a: "Sat 30 Jan, 07:00", v: `Any day, ${RUN.virtualWindow} Jan` },
-              { k: "Bib", icon: IdentificationCard, a: "Printed, in race pack", v: "E-bib to download" },
+              { k: "When", icon: Clock, a: `Sat 30 Jan, ${RUN.start}`, v: `Any day, ${RUN.virtualWindow}` },
+              { k: "Bib", icon: IdentificationCard, a: "Collected before race day", v: "E-bib to download" },
               { k: "Proof", icon: ShieldCheck, a: "Crossing the finish", v: `Upload by ${RUN.virtualUploadBy}` },
-              { k: "Reward", icon: Medal, a: "Medal at the finish", v: "E-certificate" },
             ].map((r) => (
               <div key={r.k} className="grid grid-cols-[6.5rem_1fr_1fr] items-start gap-2 border-b border-line px-5 py-4 last:border-0">
                 <span className="flex items-center gap-1.5 font-label text-muted">
@@ -151,7 +150,7 @@ function VirtualConfirmation() {
               </div>
             ))}
           </div>
-          <p className="mt-4 px-1 text-sm text-muted">Home for January after all? You can switch to the in-person 10K from My entry until {RUN.kitLock}.</p>
+          <p className="mt-4 px-1 text-sm text-muted">Home for January after all? Contact NRIF to move to the 5 km run or the Heritage Walk.</p>
         </motion.div>
       </div>
       <ShareSheet open={share} onOpenChange={setShare} distance={ev.distance} name={lead.fullName.split(" ")[0]!} bib={bib} virtual />
