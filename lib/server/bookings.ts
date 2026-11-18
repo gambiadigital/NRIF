@@ -209,6 +209,7 @@ export type BookingRow = {
   pay_method: string;
   payer_claimed_at: string | null;
   payer_from: string | null;
+  pay_token: string | null;
   source: string | null;
   referral: string | null;
   hold_until: string;
@@ -236,6 +237,12 @@ export async function bookingByRef(reference: string, key: string) {
   const b = await one<BookingRow>("select * from bookings where reference = $1", [reference.toUpperCase()]);
   if (!b || !key || !safeEqual(b.access_key, key)) return null;
   return b;
+}
+
+/** A "pay for me" link's token. It only ever unlocks paying, never the booking itself. */
+export async function bookingByPayToken(token: string) {
+  if (!/^[A-Za-z0-9_-]{16,40}$/.test(token)) return null;
+  return one<BookingRow>("select * from bookings where pay_token = $1", [token]);
 }
 
 export async function bookingById(id: string) {

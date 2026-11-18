@@ -288,3 +288,8 @@ create index if not exists card_payments_open_idx on card_payments (created_at) 
 -- Wave merchant payments carry no reference, so payers tell us the Wave number they paid from; staff (and the receipt
 -- form) match on that number and the amount.
 alter table bookings add column if not exists payer_from text;
+
+-- "Pay for me" links: a second, pay-only key the booker can send to someone else. It opens the payment page with the
+-- first name, events and amount, and nothing else (no My entry, no contact details).
+alter table bookings add column if not exists pay_token text;
+create unique index if not exists bookings_pay_token_idx on bookings (pay_token);

@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
-import { HourglassMedium, Copy, Check, Bell, Money, CalendarX, PaperPlaneTilt, CheckCircle, ArrowSquareOut, WarningCircle, ArrowClockwise, CreditCard, ShieldCheck, CircleNotch } from "@phosphor-icons/react";
+import { HourglassMedium, Copy, Check, Bell, Money, CalendarX, PaperPlaneTilt, CheckCircle, ArrowSquareOut, WarningCircle, ArrowClockwise, CreditCard, ShieldCheck, CircleNotch, ShareNetwork, WhatsappLogo } from "@phosphor-icons/react";
 import { PAYMENT_METHODS, eventById, type PaymentMethodId } from "@/lib/data";
 import { money } from "@/lib/format";
 import { api, cardFor, useSettings } from "@/lib/client";
@@ -41,8 +41,11 @@ function Pending() {
   const sp = useSearchParams();
   const ref = sp.get("ref");
   const key = sp.get("k");
+  // Someone paying for the booker arrives with a pay-only token instead of the booker's key.
+  const token = sp.get("t");
+  const auth = token ? `t=${encodeURIComponent(token)}` : `k=${encodeURIComponent(key ?? "")}`;
   const router = useRouter();
-  const { data: b, error, loading, reload } = useBookingData(ref, key, 15_000);
+  const { data: b, error, loading, reload } = useBookingData(ref, key, 15_000, token);
   const settings = useSettings().data;
   const [copied, setCopied] = useState(false);
   const payParam = sp.get("pay");
@@ -53,18 +56,18 @@ function Pending() {
   const [cardBusy, setCardBusy] = useState(false);
   const [checking, setChecking] = useState(!!cardParam && cardParam !== "cancelled");
   const handled = useRef(false);
-  const clean = `/register/pending?ref=${ref ?? ""}&k=${encodeURIComponent(key ?? "")}`;
+  const clean = `/register/pending?ref=${ref ?? ""}&${auth}`;
 
   useEffect(() => {
-    if (b?.status === "paid") router.replace(ref && key ? `/confirmation?ref=${ref}&k=${encodeURIComponent(key)}` : "/confirmation");
-  }, [b?.status, ref, key, router]);
+    if (b?.status === "paid" && !token) router.replace(ref && key ? `/confirmation?ref=${ref}&k=${encodeURIComponent(key)}` : "/confirmation");
+  }, [b?.status, ref, key, token, router]);
 
   async function startCard() {
     if (!ref) return;
     setCardBusy(true);
     try {
       // On success the browser leaves for Mastercard's page, so the button stays busy.
-      await payByCard(ref, key, (m) => {
+      await payByCard(ref, auth, (m) => {
         toast.error(m);
         setCardBusy(false);
       });
@@ -95,7 +98,7 @@ function Pending() {
     (async () => {
       try {
         for (let i = 0; i < 5; i++) {
-          const r = await api<{ outcome: "paid" | "declined" | "waiting" }>(`/api/bookings/${ref}/card/check?k=${encodeURIComponent(key ?? "")}`, { method: "POST" });
+          const r = await api<{ outcome: "paid" | "declined" | "waiting" }>(`/api/bookings/${ref}/card/check?${auth}`, { method: "POST" });
           if (r.outcome === "paid") {
             await reload();
             return;
@@ -145,6 +148,23 @@ function Pending() {
   const ecobankAccount = settings?.ecobank_account || "6240050636";
   const ecobankName = settings?.ecobank_name || "National Research and Innovation Fund";
 
+  // Someone paid through a pay-for-me link: thank them. The bibs go to the booker, not to them.
+  if (token && b.status === "paid") {
+    return (
+      <div className="mx-auto max-w-xl rounded-[1.75rem] border border-line bg-white p-8 text-center shadow-card">
+        <CheckCircle weight="fill" className="mx-auto size-14 text-forest" />
+        <h1 className="mt-4 font-race text-[2.4rem] text-navy">Thank you</h1>
+        <p className="mt-2 text-muted">
+          {b.participants[0]?.firstName}&apos;s entry ({b.reference}) is paid. They get their bib numbers by text and email, and every entry grows NRIF&apos;s
+          Endowment Fund.
+        </p>
+        <Link href="/register" className="mt-6 inline-flex h-11 items-center rounded-full bg-ember px-5 font-semibold text-white">
+          Sign up yourself
+        </Link>
+      </div>
+    );
+  }
+
   if (b.status === "released" || b.status === "cancelled") {
     return (
       <div className="mx-auto max-w-xl rounded-[1.75rem] border border-line bg-white p-8 text-center shadow-card">
@@ -163,7 +183,7 @@ function Pending() {
   async function openWave() {
     setOpening(true);
     try {
-      const r = await api<{ url: string; mode: string }>(`/api/bookings/${b!.reference}/wave?k=${encodeURIComponent(key ?? "")}`, { method: "POST" });
+      const r = await api<{ url: string; mode: string }>(`/api/bookings/${b!.reference}/wave?${auth}`, { method: "POST" });
       window.location.href = r.url;
     } catch (e) {
       toast.error((e as Error).message);
@@ -175,7 +195,7 @@ function Pending() {
   async function claim() {
     setClaiming(true);
     try {
-      await api(`/api/bookings/${b!.reference}/claim?k=${encodeURIComponent(key ?? "")}`, { method: "POST" });
+      await api(`/api/bookings/${b!.reference}/claim?${auth}`, { method: "POST" });
       await reload();
       toast("Thank you, we are looking out for it", { description: abroad ? "Transfers from abroad usually land within a day." : "We match payments every working day." });
     } catch (e) {
@@ -201,7 +221,7 @@ function Pending() {
           </motion.span>
         </span>
         <div className="min-w-0">
-          <h1 className="font-race text-[clamp(2.2rem,7vw,2.8rem)] text-navy">Payment pending</h1>
+          <h1 className="font-race text-[clamp(2.2rem,7vw,2.8rem)] text-navy">{token ? `Pay for ${b.participants[0]?.firstName ?? "their"}'s entry` : "Payment pending"}</h1>
           <p className="truncate text-muted">
             {b.participants.map((p) => eventById(p.eventId).name).join(", ")} · {b.participants[0]?.fullName}
           </p>
@@ -216,7 +236,7 @@ function Pending() {
       )}
 
       <div className="mt-6 rounded-2xl bg-cobalt-50 px-5 py-4 text-[0.9375rem] text-navy ring-1 ring-cobalt/15">
-        Your place is held until <b>{formatHold(b.holdUntil)}</b>.{" "}
+        {token ? `${b.participants[0]?.firstName ?? "Their"}'s place is held until ` : "Your place is held until "}<b>{formatHold(b.holdUntil)}</b>.{" "}
         {active === "card" ? (
           <>
             Pay <b>{amount}</b> by card and it is confirmed straight away.
@@ -238,7 +258,7 @@ function Pending() {
 
       <div className="mt-6 overflow-hidden rounded-[1.75rem] border border-line bg-white shadow-card">
         <div className="p-5 sm:p-8">
-          <p className="font-label text-muted">Your reference</p>
+          <p className="font-label text-muted">{token ? "Reference" : "Your reference"}</p>
           <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl border-2 border-dashed border-cobalt/60 bg-cobalt-50/40 px-4 py-4 sm:px-5 sm:py-5">
             <span className="font-mono text-[clamp(1.9rem,8vw,3.2rem)] font-bold tracking-[0.06em] text-cobalt">{b.reference}</span>
             <button onClick={copy} className="flex h-10 shrink-0 items-center gap-1.5 rounded-full border border-line bg-white px-4 text-sm font-semibold text-navy hover:bg-paper">
@@ -293,7 +313,7 @@ function Pending() {
                     <Button block size="lg" className="mt-5 bg-[#1dc3f3] text-navy hover:bg-[#12b0de]" icon={<ArrowSquareOut weight="bold" className="size-5" />} onClick={openWave} disabled={opening}>
                       {opening ? "Opening Wave…" : settings?.wave_checkout ? `Pay ${amount} with Wave` : `Open Wave and pay ${amount}`}
                     </Button>
-                    {!settings?.wave_checkout && <WaveFrom reference={b.reference} accessKey={key} tail={b.payerFromTail ?? null} onDone={reload} />}
+                    {!settings?.wave_checkout && <WaveFrom reference={b.reference} auth={auth} tail={b.payerFromTail ?? null} onDone={reload} />}
                   </div>
                   <QrTile caption="Scan with the Wave app">
                     <QRCodeSVG value={settings?.wave_link || "https://pay.wave.com/m/M_gm_CedMPBz-cNJ4/c/gm/"} size={164} fgColor="#0b1b3a" level="M" />
@@ -409,12 +429,19 @@ function Pending() {
               Check again
             </Button>
           )}
-          <Link href="/my-entry" className="flex h-[3.25rem] items-center justify-center rounded-full border border-line bg-white font-semibold text-navy hover:bg-paper">
-            My entry
-          </Link>
+          {!token && (
+            <Link href="/my-entry" className="flex h-[3.25rem] items-center justify-center rounded-full border border-line bg-white font-semibold text-navy hover:bg-paper">
+              My entry
+            </Link>
+          )}
         </div>
       </div>
-      <p className="mt-4 text-center text-sm text-muted">Keep this page or the text we send. Your reference and phone number get you back in.</p>
+      {!token && <PayForMe reference={b.reference} auth={auth} />}
+      <p className="mt-4 text-center text-sm text-muted">
+        {token
+          ? `You are paying for ${b.participants.map((p) => p.firstName).join(", ")}. Their bib numbers go to them by text and email once it is matched.`
+          : "Keep this page or the text we send. Your reference and phone number get you back in."}
+      </p>
     </div>
   );
 }
@@ -442,14 +469,14 @@ function QrTile({ children, caption }: { children: React.ReactNode; caption: str
 }
 
 /** Wave merchant payments carry no reference, so the payer tells us the number they paid from and staff match on it. */
-function WaveFrom({ reference, accessKey, tail, onDone }: { reference: string; accessKey: string | null; tail: string | null; onDone: () => Promise<void> }) {
+function WaveFrom({ reference, auth, tail, onDone }: { reference: string; auth: string; tail: string | null; onDone: () => Promise<void> }) {
   const [phone, setPhone] = useState({ iso: "GM", digits: "" });
   const [editing, setEditing] = useState(!tail);
   const [busy, setBusy] = useState(false);
   async function send() {
     setBusy(true);
     try {
-      await api(`/api/bookings/${reference}/claim?k=${encodeURIComponent(accessKey ?? "")}`, { json: { from: phone } });
+      await api(`/api/bookings/${reference}/claim?${auth}`, { json: { from: phone } });
       await onDone();
       setEditing(false);
       toast.success("Thank you, we are matching your Wave payment", { description: "Your bib numbers arrive by text and email once it is matched." });
@@ -482,6 +509,60 @@ function WaveFrom({ reference, accessKey, tail, onDone }: { reference: string; a
           {busy ? "Sending…" : "I have paid"}
         </Button>
       </div>
+    </div>
+  );
+}
+
+/** "Ask someone to pay": a pay-only link for a relative, friend or sponsor. It shows first names and the amount, nothing else. */
+function PayForMe({ reference, auth }: { reference: string; auth: string }) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  async function make() {
+    setBusy(true);
+    try {
+      setUrl((await api<{ url: string }>(`/api/bookings/${reference}/paylink?${auth}`, { method: "POST" })).url);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  const message = url ? `Please help me pay my Run for Independence 2027 entry (${reference}). You can pay here: ${url}` : "";
+  return (
+    <div className="mt-6 rounded-[1.5rem] border-2 border-dashed border-line-strong bg-white p-5">
+      <p className="font-bold text-navy">Someone else paying?</p>
+      <p className="mt-1 text-sm text-muted">
+        Send a parent, friend or sponsor a link. They can pay with Wave, Yonna, Ecobank or a card, and your place is confirmed once the money is matched.
+        They only see your first name and the amount.
+      </p>
+      {!url ? (
+        <Button size="lg" variant="ink" className="mt-4" icon={<ShareNetwork weight="bold" className="size-5" />} onClick={make} disabled={busy}>
+          {busy ? "Making your link…" : "Get a pay link"}
+        </Button>
+      ) : (
+        <div className="mt-4 space-y-3">
+          <div className="flex items-center gap-2 rounded-2xl border border-line bg-paper p-1.5 pl-4">
+            <span className="min-w-0 flex-1 truncate font-mono text-sm text-navy">{url.replace(/^https?:\/\//, "")}</span>
+            <button
+              onClick={() => {
+                navigator.clipboard?.writeText(url).catch(() => {});
+                toast.success("Pay link copied");
+              }}
+              className="flex h-10 shrink-0 items-center gap-1.5 rounded-xl bg-navy px-4 text-sm font-semibold text-white"
+            >
+              <Copy weight="bold" className="size-4" /> Copy
+            </button>
+          </div>
+          <a
+            href={`https://wa.me/?text=${encodeURIComponent(message)}`}
+            target="_blank"
+            rel="noreferrer"
+            className="flex h-12 items-center justify-center gap-2 rounded-full bg-[#25D366] font-semibold text-white"
+          >
+            <WhatsappLogo weight="fill" className="size-5" /> Send on WhatsApp
+          </a>
+        </div>
+      )}
     </div>
   );
 }

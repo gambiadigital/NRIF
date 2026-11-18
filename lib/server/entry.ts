@@ -2,7 +2,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import { q } from "./db";
 import { HttpError, entrySession } from "./http";
-import { bookingById, bookingByRef, participantsOf, publicBooking, type BookingRow } from "./bookings";
+import { bookingById, bookingByPayToken, bookingByRef, participantsOf, publicBooking, type BookingRow } from "./bookings";
 import { ENTRY_COOKIE, cookieOptions, seal } from "./session";
 
 export const KIT_LOCK = new Date("2027-01-09T00:00:00Z");
@@ -16,9 +16,16 @@ export async function startEntrySession(bookingId: string, email?: string) {
   (await cookies()).set(ENTRY_COOKIE, value, cookieOptions(ENTRY_DAYS * 86400));
 }
 
-/** For the pay buttons: the access key from the payment link, or the My entry sign-in for this same booking. */
-export async function payerBooking(ref: string, key: string): Promise<BookingRow> {
-  const b = key ? await bookingByRef(ref, key) : await currentBooking().then((x) => (x.reference === ref.toUpperCase() ? x : null)).catch(() => null);
+/**
+ * For the pay buttons: a "pay for me" token (someone paying for the booker), the access key from the booker's own
+ * link, or the My entry sign-in for this same booking.
+ */
+export async function payerBooking(ref: string, key: string, token = ""): Promise<BookingRow> {
+  const b = token
+    ? await bookingByPayToken(token).then((x) => (x && x.reference === ref.toUpperCase() ? x : null))
+    : key
+      ? await bookingByRef(ref, key)
+      : await currentBooking().then((x) => (x.reference === ref.toUpperCase() ? x : null)).catch(() => null);
   if (!b) throw new HttpError(404, "We could not find that booking");
   return b;
 }

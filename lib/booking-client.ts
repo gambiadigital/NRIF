@@ -47,17 +47,21 @@ export type ClientBooking = {
   kitLocked?: boolean;
   others?: { reference: string; status: string; created_at: string }[];
   signedInEmail?: string | null;
+  /** Set when someone is paying for the booker through a pay-for-me link. */
+  sponsor?: boolean;
 };
 
-/** Loads a booking by reference + key, or by the My entry cookie when those are absent. Optionally polls. */
-export function useBookingData(ref: string | null, key: string | null, pollMs = 0) {
+/** Loads a booking by reference + key, a pay-for-me token, or the My entry cookie. Optionally polls. */
+export function useBookingData(ref: string | null, key: string | null, pollMs = 0, token: string | null = null) {
   const [data, setData] = useState<ClientBooking | null>(null);
   const [error, setError] = useState<{ status: number; message: string } | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     try {
-      const d = ref && key ? await api<ClientBooking>(`/api/entry?ref=${encodeURIComponent(ref)}&k=${encodeURIComponent(key)}`) : await api<ClientBooking>("/api/entry");
+      const d = token
+        ? await api<ClientBooking>(`/api/pay/${encodeURIComponent(token)}`)
+        : ref && key ? await api<ClientBooking>(`/api/entry?ref=${encodeURIComponent(ref)}&k=${encodeURIComponent(key)}`) : await api<ClientBooking>("/api/entry");
       setData(d);
       setError(null);
     } catch (e) {
@@ -65,7 +69,7 @@ export function useBookingData(ref: string | null, key: string | null, pollMs = 
     } finally {
       setLoading(false);
     }
-  }, [ref, key]);
+  }, [ref, key, token]);
 
   useEffect(() => {
     const first = setTimeout(load, 0);

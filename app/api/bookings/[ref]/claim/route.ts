@@ -13,13 +13,14 @@ const In = z.object({ from: z.object({ iso: z.string().length(2), digits: z.stri
  */
 export const POST = route(async (req: NextRequest, ctx: RouteContext<"/api/bookings/[ref]/claim">) => {
   const { ref } = await ctx.params;
-  const b = await payerBooking(ref, req.nextUrl.searchParams.get("k") ?? "");
+  const token = req.nextUrl.searchParams.get("t") ?? "";
+  const b = await payerBooking(ref, req.nextUrl.searchParams.get("k") ?? "", token);
   const input = In.parse(await req.json().catch(() => ({})));
   if (b.status !== "pending") return json({ ok: true });
   const from = input.from ? e164(input.from.iso, input.from.digits) : null;
   if (!b.payer_claimed_at || (from && from !== b.payer_from)) {
     await q("update bookings set payer_claimed_at = coalesce(payer_claimed_at, now()), payer_from = coalesce($2, payer_from) where id = $1", [b.id, from]);
-    await log("claim", `${b.reference}: payer says they have sent ${b.currency} ${b.total} by ${b.pay_method}${from ? ` from ${from}` : ""}.`, { actor: "payer", bookingId: b.id });
+    await log("claim", `${b.reference}: ${token ? "someone paying for them" : "payer"} says they have sent ${b.currency} ${b.total} by ${b.pay_method}${from ? ` from ${from}` : ""}.`, { actor: "payer", bookingId: b.id });
   }
   return json({ ok: true });
 });

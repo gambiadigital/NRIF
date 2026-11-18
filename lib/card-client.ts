@@ -35,8 +35,9 @@ function loadCheckout(src: string) {
 }
 
 /** Opens a checkout for the whole booking and leaves for Mastercard's page. Resolves only if something went wrong. */
-export async function payByCard(reference: string, key: string | null, onError: (message: string) => void) {
-  const r = await api<{ sessionId: string; script: string }>(`/api/bookings/${reference}/card${key ? `?k=${encodeURIComponent(key)}` : ""}`, { method: "POST" });
+/** `auth` is the query that proves the right to pay: k=<access key> for the booker, t=<pay token> for someone paying for them. */
+export async function payByCard(reference: string, auth: string, onError: (message: string) => void) {
+  const r = await api<{ sessionId: string; script: string }>(`/api/bookings/${reference}/card?${auth}`, { method: "POST" });
   window.r4iCardError = (e) => {
     console.error("card checkout", e);
     onError("The card page could not open. Try again, or choose another way to pay.");
