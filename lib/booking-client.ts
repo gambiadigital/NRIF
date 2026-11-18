@@ -30,6 +30,7 @@ export type ClientBooking = {
   holdUntil: string;
   paidAt: string | null;
   claimedAt: string | null;
+  payerFromTail?: string | null;
   createdAt: string;
   steps: boolean;
   stepsCode: string | null;

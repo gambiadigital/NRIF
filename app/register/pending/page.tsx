@@ -14,6 +14,7 @@ import { api, cardFor, useSettings } from "@/lib/client";
 import { payByCard } from "@/lib/card-client";
 import { useBookingData, formatHold } from "@/lib/booking-client";
 import { Button } from "@/components/ui/button";
+import { PhoneField } from "@/components/ui/fields";
 import { PayMark, ECOBANK_QR } from "@/components/register/PayMethods";
 import { cn } from "@/lib/cn";
 
@@ -259,22 +260,35 @@ function Pending() {
               {active === "wave" && (
                 <div className="grid grid-cols-1 items-start gap-6 sm:grid-cols-[1fr_auto]">
                   <div>
-                    <Steps
-                      items={[
-                        <>Tap <b>Open Wave</b>, or scan the code with the Wave app.</>,
-                        <>Enter <b>{amount}</b>.</>,
-                        <>Put <b className="font-mono">{b.reference}</b> in the note.</>,
-                      ]}
-                    />
-                    <p className="mt-3 text-sm text-muted">
-                      Or send it in Wave to <b className="text-navy">{waveNumber}</b>.
-                    </p>
+                    {settings?.wave_checkout ? (
+                      <Steps
+                        items={[
+                          <>Tap <b>Pay with Wave</b>.</>,
+                          <>Approve <b>{amount}</b> in the Wave app.</>,
+                          <>Your {b.participants.every((p) => eventById(p.eventId).kind === "virtual") ? "e-bib arrives" : "bib numbers arrive"} straight away. No reference needed.</>,
+                        ]}
+                      />
+                    ) : (
+                      <Steps
+                        items={[
+                          <>Tap <b>Open Wave</b>, or scan the code with the Wave app.</>,
+                          <>Pay <b>{amount}</b> to National Research and Innovation Fund.</>,
+                          <>Wave has no box for a reference, so tell us below which Wave number you paid from.</>,
+                        ]}
+                      />
+                    )}
+                    {!settings?.wave_checkout && (
+                      <p className="mt-3 text-sm text-muted">
+                        Or send it in Wave to <b className="text-navy">{waveNumber}</b>.
+                      </p>
+                    )}
                     <Button block size="lg" className="mt-5 bg-[#1dc3f3] text-navy hover:bg-[#12b0de]" icon={<ArrowSquareOut weight="bold" className="size-5" />} onClick={openWave} disabled={opening}>
-                      {opening ? "Opening Wave…" : `Open Wave and pay ${amount}`}
+                      {opening ? "Opening Wave…" : settings?.wave_checkout ? `Pay ${amount} with Wave` : `Open Wave and pay ${amount}`}
                     </Button>
+                    {!settings?.wave_checkout && <WaveFrom reference={b.reference} accessKey={key} tail={b.payerFromTail ?? null} onDone={reload} />}
                   </div>
                   <QrTile caption="Scan with the Wave app">
-                    <QRCodeSVG value={settings?.wave_link || "https://pay.wave.com/m/M_gm_CedMPBz-cNJ4/mu/U_gm_PQs2KiZYy60h/c/gm/"} size={164} fgColor="#0b1b3a" level="M" />
+                    <QRCodeSVG value={settings?.wave_link || "https://pay.wave.com/m/M_gm_CedMPBz-cNJ4/c/gm/"} size={164} fgColor="#0b1b3a" level="M" />
                   </QrTile>
                 </div>
               )}
@@ -415,6 +429,51 @@ function QrTile({ children, caption }: { children: React.ReactNode; caption: str
     <div className="mx-auto flex w-fit flex-col items-center gap-2">
       <div className="rounded-2xl bg-[#f0f0f0] p-3 ring-1 ring-line">{children}</div>
       <span className="text-xs text-muted">{caption}</span>
+    </div>
+  );
+}
+
+/** Wave merchant payments carry no reference, so the payer tells us the number they paid from and staff match on it. */
+function WaveFrom({ reference, accessKey, tail, onDone }: { reference: string; accessKey: string | null; tail: string | null; onDone: () => Promise<void> }) {
+  const [phone, setPhone] = useState({ iso: "GM", digits: "" });
+  const [editing, setEditing] = useState(!tail);
+  const [busy, setBusy] = useState(false);
+  async function send() {
+    setBusy(true);
+    try {
+      await api(`/api/bookings/${reference}/claim?k=${encodeURIComponent(accessKey ?? "")}`, { json: { from: phone } });
+      await onDone();
+      setEditing(false);
+      toast.success("Thank you, we are matching your Wave payment", { description: "Your bib numbers arrive by text and email once it is matched." });
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  if (!editing && tail)
+    return (
+      <p className="mt-5 flex items-start gap-2 rounded-2xl bg-forest-50 px-4 py-3 text-sm text-navy ring-1 ring-forest/15">
+        <CheckCircle weight="fill" className="mt-0.5 size-4 shrink-0 text-forest" />
+        <span>
+          We are matching your Wave payment from the number ending <b className="font-mono">{tail}</b>.{" "}
+          <button onClick={() => setEditing(true)} className="font-semibold text-forest underline">
+            Change
+          </button>
+        </span>
+      </p>
+    );
+  return (
+    <div className="mt-5 rounded-2xl border border-line bg-paper p-4">
+      <label htmlFor="wave-from" className="text-sm font-bold text-navy">
+        Paid already? The Wave number you paid from
+      </label>
+      <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+        <PhoneField id="wave-from" value={phone} onChange={setPhone} />
+        <Button size="lg" className="h-12 shrink-0" onClick={send} disabled={busy || phone.digits.length < 7}>
+          {busy ? "Sending…" : "I have paid"}
+        </Button>
+      </div>
     </div>
   );
 }

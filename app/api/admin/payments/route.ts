@@ -14,7 +14,7 @@ export const GET = route(async () => {
       order by (r.status = 'unmatched') desc, r.received_at desc limit 300`,
   ),
   q(
-    `select b.id, b.reference, b.total::float as total, b.currency, b.pay_method, b.created_at, b.hold_until, b.payer_claimed_at, b.residence, b.city,
+    `select b.id, b.reference, b.total::float as total, b.currency, b.pay_method, b.created_at, b.hold_until, b.payer_claimed_at, b.payer_from, right(b.phone, 7) as phone_tail, b.residence, b.city,
             greatest(1, ceil(extract(epoch from (now() - b.created_at)) / 86400))::int as day,
             (b.hold_until < now()) as expired,
             (select p.full_name from participants p where p.booking_id = b.id and p.is_lead) as lead,

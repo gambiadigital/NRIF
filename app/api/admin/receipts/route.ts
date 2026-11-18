@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { one, log } from "@/lib/server/db";
+import { one, q, log } from "@/lib/server/db";
 import { body, json, requireAdmin, route } from "@/lib/server/http";
 import { confirmBooking } from "@/lib/server/bookings";
 
@@ -13,7 +13,8 @@ const In = z.object({
 
 /*
  * Staff record money that reached an NRIF account. If the payer quoted a pending booking's reference and the amount
- * covers it (dalasi bookings), it is matched straight away; otherwise it waits in Unmatched with that booking suggested.
+ * covers it (dalasi bookings), it is matched straight away. A Wave payment with no reference matches by the payer's
+ * number instead. Anything else waits in Unmatched with likely bookings suggested.
  */
 export const POST = route(async (req: Request) => {
   const admin = await requireAdmin();
@@ -30,6 +31,25 @@ export const POST = route(async (req: Request) => {
     if (b && b.status === "pending" && b.currency === "GMD" && input.amount >= Number(b.total)) {
       await confirmBooking(b.id, r!.id, admin.name, false);
       return json({ id: r!.id, matched: true });
+    }
+  }
+
+  // Wave merchant payments carry no reference. If the payer box holds a phone number, match on it instead: the number
+  // the payer told us they paid from (or their booking phone) and the amount. Only a single clear match is confirmed.
+  const digits = (input.payer ?? "").replace(/\D/g, "");
+  if (!ref && digits.length >= 7) {
+    const tail = digits.slice(-7);
+    const hits = await q<{ id: string; reference: string }>(
+      `select id, reference from bookings
+        where status = 'pending' and currency = 'GMD' and total <= $2
+          and (right(regexp_replace(coalesce(payer_from, ''), '\\D', '', 'g'), 7) = $1 or right(phone, 7) = $1)`,
+      [tail, input.amount],
+    );
+    if (hits.length === 1) {
+      await q("update receipts set reference_given = $2 where id = $1", [r!.id, hits[0]!.reference]);
+      await confirmBooking(hits[0]!.id, r!.id, admin.name, false);
+      await log("receipt", `${admin.name}'s ${input.method} receipt from ${input.payer} matched ${hits[0]!.reference} by phone number.`, { actor: admin.name });
+      return json({ id: r!.id, matched: true, by: "phone", reference: hits[0]!.reference });
     }
   }
   return json({ id: r!.id, matched: false });

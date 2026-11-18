@@ -14,7 +14,7 @@ import { money } from "@/lib/format";
 import { cn } from "@/lib/cn";
 
 type Receipt = { id: string; method: string; amount: number; currency: string; payer: string | null; note: string | null; reference_given: string | null; status: string; auto: boolean; matched_by: string | null; received_at: string; booking_reference: string | null; bibs: string | null; lead: string | null };
-type Pending = { id: string; reference: string; total: number; currency: string; pay_method: string; created_at: string; hold_until: string; payer_claimed_at: string | null; residence: string; city: string | null; day: number; expired: boolean; lead: string; people: number; events: string };
+type Pending = { id: string; reference: string; total: number; currency: string; pay_method: string; created_at: string; hold_until: string; payer_claimed_at: string | null; payer_from: string | null; phone_tail: string; residence: string; city: string | null; day: number; expired: boolean; lead: string; people: number; events: string };
 type Pledge = { id: string; reference: string; amount: number; name: string | null; steps_code: string; created_at: string };
 type Data = { receipts: Receipt[]; pending: Pending[]; pledges: Pledge[]; activity: { at: string; actor: string; text: string }[] };
 
@@ -179,7 +179,11 @@ export default function Payments() {
                                 Day {Math.min(p.day, 5)} of 5
                               </Badge>
                             )}
-                            {p.payer_claimed_at && <span className="mt-1 flex items-center gap-1 text-xs font-semibold text-cobalt"><PaperPlaneTilt weight="fill" className="size-3" /> Says sent</span>}
+                            {p.payer_claimed_at && (
+                              <span className="mt-1 flex items-center gap-1 whitespace-nowrap text-xs font-semibold text-cobalt">
+                                <PaperPlaneTilt weight="fill" className="size-3" /> Says sent{p.payer_from ? <> from <span className="font-mono">{p.payer_from}</span></> : ""}
+                              </span>
+                            )}
                           </td>
                           <td className="whitespace-nowrap text-right">
                             <button onClick={() => setConfirming(p)} className="inline-flex h-8 items-center gap-1 rounded-full px-2.5 text-xs font-semibold text-forest hover:bg-forest-50">
@@ -306,8 +310,10 @@ function RecordSheet({ open, onClose, onDone }: { open: boolean; onClose: () => 
   async function save() {
     setBusy(true);
     try {
-      const r = await api<{ matched: boolean }>("/api/admin/receipts", { json: { method, amount: Number(amount), payer: payer || undefined, referenceGiven: ref || undefined, note: note || undefined } });
-      toast.success(r.matched ? "Recorded and matched. Bibs issued." : "Receipt recorded", { description: r.matched ? undefined : "Match it to a booking from Unmatched receipts." });
+      const r = await api<{ matched: boolean; by?: string; reference?: string }>("/api/admin/receipts", { json: { method, amount: Number(amount), payer: payer || undefined, referenceGiven: ref || undefined, note: note || undefined } });
+      toast.success(r.matched ? "Recorded and matched. Bibs issued." : "Receipt recorded", {
+        description: r.by === "phone" ? `Matched ${r.reference} by the paying number.` : r.matched ? undefined : "Match it to a booking from Unmatched receipts.",
+      });
       setAmount("");
       setPayer("");
       setRef("");
@@ -325,7 +331,7 @@ function RecordSheet({ open, onClose, onDone }: { open: boolean; onClose: () => 
       open={open}
       onOpenChange={(o) => !o && onClose()}
       title="Record a receipt"
-      description="Money that has reached an NRIF account. If it quotes a waiting reference and covers the amount, it is matched straight away."
+      description="Money that has reached an NRIF account. It is matched straight away if it quotes a waiting reference, or, for Wave, if the paying number belongs to one waiting booking and the amount covers it."
       footer={
         <Button block size="lg" disabled={busy || !Number(amount)} onClick={save}>
           {busy ? "Saving…" : "Record receipt"}
@@ -343,7 +349,7 @@ function RecordSheet({ open, onClose, onDone }: { open: boolean; onClose: () => 
           <TextInput value={ref} onChange={(e) => setRef(e.target.value.toUpperCase())} placeholder="RFI-7Q4K" className="font-mono uppercase" />
         </Field>
         <Field label="Payer" optional>
-          <TextInput value={payer} onChange={(e) => setPayer(e.target.value)} placeholder="Name or number" />
+          <TextInput value={payer} onChange={(e) => setPayer(e.target.value)} placeholder="Name, or the Wave number it came from" />
         </Field>
         <Field label="Note" optional className="sm:col-span-2">
           <TextInput value={note} onChange={(e) => setNote(e.target.value)} placeholder="Transaction ID, anything useful" />
@@ -360,6 +366,8 @@ function MatchSheet({ receipt, data, onClose, onDone }: { receipt: Receipt | nul
   const rows = useMemo(() => {
     if (!data || !receipt) return [];
     const term = q.toLowerCase();
+    const payerDigits = (receipt.payer ?? "").replace(/\D/g, "");
+    const payerTail = payerDigits.length >= 7 ? payerDigits.slice(-7) : "";
     const bookings = data.pending.map((p) => ({
       kind: "booking" as const,
       id: p.id,
@@ -367,7 +375,11 @@ function MatchSheet({ receipt, data, onClose, onDone }: { receipt: Receipt | nul
       who: p.lead + (p.people > 1 ? ` +${p.people - 1}` : ""),
       what: p.events,
       amount: amt(p.total, p.currency),
-      likely: p.reference === receipt.reference_given || (p.currency === "GMD" && Math.abs(p.total - receipt.amount) < 1),
+      // Wave payments carry no reference, so the paying number (the one they told us, or their booking phone) counts too.
+      likely:
+        p.reference === receipt.reference_given ||
+        (p.currency === "GMD" && Math.abs(p.total - receipt.amount) < 1) ||
+        (!!payerTail && (payerTail === (p.payer_from ?? "").replace(/\D/g, "").slice(-7) || payerTail === p.phone_tail)),
     }));
     const pledges = data.pledges.map((p) => ({
       kind: "pledge" as const,

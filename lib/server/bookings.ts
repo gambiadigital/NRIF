@@ -208,6 +208,7 @@ export type BookingRow = {
   total: string;
   pay_method: string;
   payer_claimed_at: string | null;
+  payer_from: string | null;
   source: string | null;
   referral: string | null;
   hold_until: string;
@@ -272,6 +273,8 @@ export function publicBooking(b: BookingRow, people: ParticipantRow[], extra: Re
     holdUntil: b.hold_until,
     paidAt: b.paid_at,
     claimedAt: b.payer_claimed_at,
+    // Only the end of the number the payer said they paid from, enough for them to recognise it.
+    payerFromTail: b.payer_from ? b.payer_from.slice(-4) : null,
     createdAt: b.created_at,
     steps: b.steps,
     stepsCode: b.steps_code,

@@ -284,3 +284,7 @@ create table if not exists card_payments (
 );
 create index if not exists card_payments_booking_idx on card_payments (booking_id, created_at desc);
 create index if not exists card_payments_open_idx on card_payments (created_at) where status = 'open';
+
+-- Wave merchant payments carry no reference, so payers tell us the Wave number they paid from; staff (and the receipt
+-- form) match on that number and the amount.
+alter table bookings add column if not exists payer_from text;

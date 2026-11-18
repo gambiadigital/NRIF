@@ -62,6 +62,11 @@ job run the same check, so a payer who closes the tab is still confirmed. Card s
 listed in `MPGS_CURRENCIES`. Test cards: Mastercard 5123 4500 0000 0008 or Visa 4508 7500 1574 1019, expiry 01/39
 (approved) or 05/39 (declined), security code 100.
 
+**Wave without the API.** NRIF's Wave merchant link (`https://pay.wave.com/m/M_gm_CedMPBz-cNJ4/c/gm/`; the longer
+`/mu/U_gm_…` form returns 404) has no box for a reference. So the Wave tab asks payers for the Wave number they paid
+from, staff see it on the waiting booking, and a Wave receipt recorded with that number in the Payer box matches by
+itself when the number (or the booking phone) belongs to exactly one waiting booking and the amount covers it.
+
 When Wave Checkout API keys arrive, set `WAVE_API_KEY` and `WAVE_WEBHOOK_SECRET` and point Wave's webhook at
 `/api/webhooks/wave`: each booking then gets its own checkout with the exact amount, and payment confirms itself.
 

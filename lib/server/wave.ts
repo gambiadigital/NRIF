@@ -10,7 +10,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
  * The API path follows Wave's published Checkout API and is untested until those keys exist.
  */
 
-export const waveLink = () => process.env.WAVE_PAYMENT_LINK || "https://pay.wave.com/m/M_gm_CedMPBz-cNJ4/mu/U_gm_PQs2KiZYy60h/c/gm/";
+export const waveLink = () => process.env.WAVE_PAYMENT_LINK || "https://pay.wave.com/m/M_gm_CedMPBz-cNJ4/c/gm/";
 export const waveCheckoutEnabled = () => !!process.env.WAVE_API_KEY;
 
 export async function createWaveCheckout(opts: { amount: number; reference: string; successUrl: string; errorUrl: string }) {
