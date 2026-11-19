@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { Check, BellRinging, ArrowsClockwise, PaperPlaneTilt, ShieldCheck, Copy, CircleNotch, HourglassMedium, ArrowCounterClockwise, Eye, X, WarningCircle } from "@phosphor-icons/react";
+import { Check, BellRinging, ArrowsClockwise, PaperPlaneTilt, ShieldCheck, Copy, CircleNotch, HourglassMedium, ArrowCounterClockwise, Eye, X, WarningCircle, CaretDown } from "@phosphor-icons/react";
 import { AdminTitle, Empty, SearchBox, Tabs, Toolbar, type Me } from "@/components/admin/Shell";
 import { BookingDrawer } from "@/components/admin/BookingDrawer";
 import { Badge } from "@/components/ui/fields";
@@ -53,6 +53,8 @@ const KNOWN = METHODS.map((m) => m.id) as string[];
 
 const amt = (n: number, c: string) => money(n, c as never, { decimals: c !== "GMD" });
 const PAGE = 60;
+/** Each staff member's method filter, remembered on their device, so whoever looks after Wave always lands on Wave. */
+const METHOD_KEY = "r4i-admin-pay-method";
 
 export default function Payments() {
   const { data, reload, loading } = useAdmin<Data>("/api/admin/payments");
@@ -62,21 +64,48 @@ export default function Payments() {
   const [term, setTerm] = useState("");
   const [only, setOnly] = useState<string | null>(null);
   const [shown, setShown] = useState(PAGE);
+
+  // First load: a link with ?method=wave wins, then what this person picked last time on this device.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      let v: string | null = null;
+      try {
+        v = new URLSearchParams(window.location.search).get("method") || localStorage.getItem(METHOD_KEY);
+      } catch {}
+      if (v && KNOWN.includes(v)) setOnly(v);
+    }, 0);
+    return () => clearTimeout(t);
+  }, []);
+
+  /** Shows one payment method only (or all, with null), remembers it, and puts it in the link so it can be shared. */
+  function pickMethod(v: string | null) {
+    setOnly(v);
+    setShown(PAGE);
+    try {
+      if (v) localStorage.setItem(METHOD_KEY, v);
+      else localStorage.removeItem(METHOD_KEY);
+    } catch {}
+    const u = new URL(window.location.href);
+    if (v) u.searchParams.set("method", v);
+    else u.searchParams.delete("method");
+    window.history.replaceState(window.history.state, "", u);
+  }
   const [confirming, setConfirming] = useState<Row | null>(null);
   const [releasing, setReleasing] = useState<Row | null>(null);
   const [reminding, setReminding] = useState<string | null>(null);
   const [details, setDetails] = useState<string | null>(null);
 
   const all = useMemo(() => data?.bookings ?? [], [data]);
-  const counts = { all: all.length, waiting: all.filter((r) => r.status === "pending").length, confirmed: all.filter((r) => r.status === "paid").length };
+  // The tab counts follow the method filter, so "Waiting 14" means 14 Wave payments to look for when Wave is picked.
+  const mine = useMemo(() => (only ? all.filter((r) => r.pay_method === only) : all), [all, only]);
+  const counts = { all: mine.length, waiting: mine.filter((r) => r.status === "pending").length, confirmed: mine.filter((r) => r.status === "paid").length };
 
   const rows = useMemo(() => {
     const t = term.trim().toLowerCase();
     const digits = t.replace(/\D/g, "");
-    let list = all.filter(
+    let list = mine.filter(
       (r) =>
         (tab === "all" || (tab === "waiting" ? r.status === "pending" : r.status === "paid")) &&
-        (!only || r.pay_method === only) &&
         (!t ||
           `${r.reference} ${r.lead} ${r.events} ${r.email} ${r.confirmed_by ?? ""} ${r.bibs ?? ""}`.toLowerCase().includes(t) ||
           (digits.length >= 3 && `${r.payer_from ?? ""} ${r.phone_tail}`.replace(/\D/g, "").includes(digits))),
@@ -85,7 +114,7 @@ export default function Payments() {
     if (tab === "waiting") list = [...list].sort((a, b) => Number(!!b.payer_claimed_at) - Number(!!a.payer_claimed_at) || b.created_at.localeCompare(a.created_at));
     if (tab === "confirmed") list = [...list].sort((a, b) => (b.paid_at ?? "").localeCompare(a.paid_at ?? ""));
     return list;
-  }, [all, tab, term, only]);
+  }, [mine, tab, term]);
 
   async function remind(r: Row) {
     setReminding(r.id);
@@ -115,21 +144,34 @@ export default function Payments() {
       />
 
       <div className="@container mb-2">
-      <div className="grid grid-cols-2 gap-2 @xl:grid-cols-3 @4xl:grid-cols-5 @4xl:gap-3">
+        <div className="mb-2 flex min-h-8 items-center justify-between gap-3">
+          <p className="text-sm text-muted">
+            {only ? (
+              <>
+                Showing <b className="text-navy">{method(only).label}</b> payments only
+              </>
+            ) : (
+              "Pick a method to work on only its payments"
+            )}
+          </p>
+          {only && (
+            <button onClick={() => pickMethod(null)} className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full px-3 text-sm font-semibold text-forest hover:bg-forest-50">
+              <X weight="bold" className="size-3.5" /> Show all
+            </button>
+          )}
+        </div>
+        <div className="grid grid-cols-2 gap-2 @xl:grid-cols-3 @4xl:grid-cols-5 @4xl:gap-3">
         {METHODS.map((m) => {
           const t = tile(m.id);
           const on = only === m.id;
           return (
             <button
               key={m.id}
-              onClick={() => {
-                setOnly(on ? null : m.id);
-                setShown(PAGE);
-              }}
+              onClick={() => pickMethod(on ? null : m.id)}
               aria-pressed={on}
               className={cn(
                 "flex min-w-0 items-center gap-2.5 rounded-2xl border bg-white p-2.5 text-left transition-[border-color,box-shadow] @xl:gap-3 @xl:p-3",
-                on ? "border-forest shadow-[0_0_0_3px_rgb(19_95_64/0.15)]" : "border-line hover:border-line-strong",
+                on ? "border-forest shadow-[0_0_0_3px_rgb(19_95_64/0.15)]" : only ? "border-line opacity-60 hover:opacity-100" : "border-line hover:border-line-strong",
               )}
             >
               <PayMark id={m.id as never} className="h-8 w-11 rounded-lg @xl:h-10 @xl:w-14 @xl:rounded-xl" />
@@ -147,7 +189,7 @@ export default function Payments() {
       </div>
 
       <Toolbar>
-        <div className="mx-auto flex max-w-7xl flex-col gap-3 md:flex-row md:items-center">
+        <div className="mx-auto flex max-w-7xl flex-col gap-3 @3xl:flex-row @3xl:items-center">
           <Tabs
             value={tab}
             onChange={(v) => {
@@ -160,12 +202,10 @@ export default function Payments() {
               { v: "confirmed", l: "Confirmed", n: counts.confirmed },
             ]}
           />
-          <SearchBox value={term} onChange={setTerm} placeholder="Reference, name, email or paying number" className="md:ml-auto md:w-80" />
-          {only && (
-            <button onClick={() => setOnly(null)} className="inline-flex h-9 items-center gap-1.5 self-start rounded-full bg-navy px-3.5 text-sm font-semibold text-white md:self-auto">
-              {method(only).label} only <X weight="bold" className="size-3.5" />
-            </button>
-          )}
+          <div className="flex gap-2 @3xl:ml-auto">
+            <MethodPicker value={only} onChange={pickMethod} />
+            <SearchBox value={term} onChange={setTerm} placeholder="Reference, name, email or paying number" className="min-w-0 flex-1 @3xl:w-72 @3xl:flex-none" />
+          </div>
         </div>
       </Toolbar>
 
@@ -177,13 +217,15 @@ export default function Payments() {
         </div>
       ) : rows.length === 0 ? (
         <Empty>
-          {term || only
+          {term
             ? "Nothing matches that search."
             : tab === "waiting"
-              ? "No bookings are waiting for payment."
+              ? `No ${only ? `${method(only).label} ` : ""}bookings are waiting for payment.`
               : tab === "confirmed"
-                ? "No payments confirmed yet."
-                : "No bookings yet."}
+                ? `No ${only ? `${method(only).label} ` : ""}payments confirmed yet.`
+                : only
+                  ? `No ${method(only).label} bookings yet.`
+                  : "No bookings yet."}
         </Empty>
       ) : (
         <>
@@ -215,6 +257,32 @@ export default function Payments() {
       <ReleaseSheet row={releasing} onClose={() => setReleasing(null)} />
       <BookingDrawer id={details} onClose={() => setDetails(null)} />
     </div>
+  );
+}
+
+function MethodPicker({ value, onChange }: { value: string | null; onChange: (v: string | null) => void }) {
+  return (
+    <label className="relative block w-[9.5rem] shrink-0 @3xl:w-44">
+      <span className="sr-only">Payment method</span>
+      <select
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value || null)}
+        className={cn(
+          "h-11 w-full cursor-pointer appearance-none truncate rounded-full border pl-4 pr-9 text-[0.9375rem] font-semibold outline-none transition-colors focus:shadow-[0_0_0_4px_rgb(19_95_64/0.15)]",
+          value ? "border-navy bg-navy text-white" : "border-line bg-white text-navy hover:border-line-strong",
+        )}
+      >
+        <option value="" className="bg-white text-navy">
+          All methods
+        </option>
+        {METHODS.map((m) => (
+          <option key={m.id} value={m.id} className="bg-white text-navy">
+            {m.label}
+          </option>
+        ))}
+      </select>
+      <CaretDown weight="bold" className={cn("pointer-events-none absolute right-3.5 top-1/2 size-4 -translate-y-1/2", value ? "text-white" : "text-muted")} />
+    </label>
   );
 }
 
