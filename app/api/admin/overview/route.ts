@@ -4,7 +4,7 @@ import { visibleActor } from "@/lib/server/admin";
 
 export const GET = route(async () => {
   await requireAdmin();
-  const [k, daily, byEvent, bySource, residence, cities, activity, s] = await Promise.all([
+  const [k, daily, byEvent, bySource, residence, cities, activity, s, claimedAmounts] = await Promise.all([
   one<{ entries: number; bookings: number; pending: number; pending_late: number; claimed: number; raised: string; today: number }>(
     `select
        (select count(*)::int from participants p join bookings b on b.id = p.booking_id where b.status = 'paid') as entries,
@@ -39,6 +39,12 @@ export const GET = route(async () => {
   ),
   q<{ at: string; actor: string; text: string }>(`select at, actor, text from activity a where ${visibleActor("a")} order by at desc limit 60`),
   settings(["fund_goal_gmd"]),
+  // Money payers say they have sent but nobody has confirmed yet (bookings still waiting), dalasi first.
+  q<{ currency: string; amount: number; n: number }>(
+    `select currency, sum(total)::float as amount, count(*)::int as n from bookings
+      where status = 'pending' and payer_claimed_at is not null
+      group by 1 order by (currency = 'GMD') desc, 1`,
+  ),
   ]);
-  return json({ kpis: { ...k, raised: Number(k?.raised ?? 0), goal: Number(s.fund_goal_gmd || 20_000_000) }, daily, byEvent, bySource, residence, cities, activity });
+  return json({ kpis: { ...k, raised: Number(k?.raised ?? 0), goal: Number(s.fund_goal_gmd || 20_000_000) }, claimedAmounts, daily, byEvent, bySource, residence, cities, activity });
 });
