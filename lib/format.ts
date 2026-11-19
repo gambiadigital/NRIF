@@ -1,4 +1,4 @@
-import { CURRENCIES, RUN, type Currency } from "./data";
+import { CURRENCIES, GMD_PER_GBP, RUN, type Currency } from "./data";
 
 export function money(amount: number, currency: Currency = "GMD", opts: { decimals?: boolean } = {}) {
   if (currency === "GMD") return `GMD ${Math.round(amount).toLocaleString("en-GB")}`;
@@ -11,6 +11,13 @@ export function compactGMD(n: number) {
   if (n >= 1_000_000) return `GMD ${parseFloat((n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 2))}m`;
   if (n >= 1000) return `GMD ${(n / 1000).toFixed(0)}k`;
   return `GMD ${n}`;
+}
+
+/** Any booking amount in dalasi (foreign currencies through GBP at GMD_PER_GBP). */
+export function toGMD(amount: number, currency: string) {
+  if (currency === "GMD") return amount;
+  const c = CURRENCIES.find((x) => x.code === currency);
+  return c ? (amount / c.perGBP) * GMD_PER_GBP : 0;
 }
 
 /** Suggested amount for someone abroad, in their currency, rounded to a friendly number. */

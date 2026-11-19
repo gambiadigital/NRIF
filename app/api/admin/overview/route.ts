@@ -1,18 +1,18 @@
 import { q, one, settings } from "@/lib/server/db";
 import { json, requireAdmin, route } from "@/lib/server/http";
 import { visibleActor } from "@/lib/server/admin";
+import { toGMD } from "@/lib/format";
 
 export const GET = route(async () => {
   await requireAdmin();
-  const [k, daily, byEvent, bySource, residence, cities, activity, s, claimedAmounts] = await Promise.all([
-  one<{ entries: number; bookings: number; pending: number; pending_late: number; claimed: number; raised: string; today: number }>(
+  const [k, daily, byEvent, bySource, residence, cities, activity, s, money] = await Promise.all([
+  one<{ entries: number; bookings: number; pending: number; pending_late: number; claimed: number; today: number }>(
     `select
        (select count(*)::int from participants p join bookings b on b.id = p.booking_id where b.status = 'paid') as entries,
        (select count(*)::int from bookings where status = 'paid') as bookings,
        (select count(*)::int from bookings where status = 'pending' and hold_until > now()) as pending,
        (select count(*)::int from bookings where status = 'pending' and hold_until > now() and created_at < now() - interval '3 days') as pending_late,
        (select count(*)::int from bookings where status = 'pending' and payer_claimed_at is not null) as claimed,
-       (select coalesce(sum(total), 0) from bookings where status = 'paid' and currency = 'GMD') as raised,
        (select count(*)::int from participants p join bookings b on b.id = p.booking_id where b.created_at > now() - interval '1 day') as today`,
   ),
   q<{ day: string; n: number }>(
@@ -39,12 +39,12 @@ export const GET = route(async () => {
   ),
   q<{ at: string; actor: string; text: string }>(`select at, actor, text from activity a where ${visibleActor("a")} order by at desc limit 60`),
   settings(["fund_goal_gmd"]),
-  // Money payers say they have sent but nobody has confirmed yet (bookings still waiting), dalasi first.
-  q<{ currency: string; amount: number; n: number }>(
-    `select currency, sum(total)::float as amount, count(*)::int as n from bookings
-      where status = 'pending' and payer_claimed_at is not null
-      group by 1 order by (currency = 'GMD') desc, 1`,
+  // Raised: confirmed bookings plus those whose payer says the money is sent, per currency.
+  q<{ currency: string; amount: number }>(
+    `select currency, sum(total)::float as amount from bookings
+      where status = 'paid' or (status = 'pending' and payer_claimed_at is not null) group by 1`,
   ),
   ]);
-  return json({ kpis: { ...k, raised: Number(k?.raised ?? 0), goal: Number(s.fund_goal_gmd || 20_000_000) }, claimedAmounts, daily, byEvent, bySource, residence, cities, activity });
+  const raised = Math.round(money.reduce((sum, m) => sum + toGMD(m.amount, m.currency), 0));
+  return json({ kpis: { ...k, raised, goal: Number(s.fund_goal_gmd || 20_000_000) }, daily, byEvent, bySource, residence, cities, activity });
 });

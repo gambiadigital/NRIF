@@ -1,22 +1,19 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "motion/react";
-import { TrendUp, Users, CurrencyCircleDollar, HourglassMedium, PaperPlaneTilt, ArrowRight, DownloadSimple, type Icon } from "@phosphor-icons/react";
+import { TrendUp, Users, CurrencyCircleDollar, HourglassMedium, PaperPlaneTilt, ArrowRight, DownloadSimple } from "@phosphor-icons/react";
 import { AdminTitle, Panel, Empty } from "@/components/admin/Shell";
 import { AreaChart, BarList, Donut } from "@/components/admin/Charts";
 import { CitiesMap } from "@/components/CitiesMap";
 import { CountUp } from "@/components/ui/motion";
 import { RUN } from "@/lib/data";
 import { useAdmin, hhmm, dayLabel } from "@/lib/admin-client";
-import { money } from "@/lib/format";
 import { cn } from "@/lib/cn";
 
 type Overview = {
   kpis: { entries: number; bookings: number; pending: number; pending_late: number; claimed: number; raised: number; today: number; goal: number };
-  /** What payers say they have sent, not confirmed yet, per currency (dalasi first). */
-  claimedAmounts: { currency: string; amount: number; n: number }[];
   daily: { day: string; n: number }[];
   byEvent: { id: string; name: string; n: number }[];
   bySource: { source: string; n: number }[];
@@ -43,51 +40,11 @@ export default function Overview() {
     return () => clearTimeout(t);
   }, []);
   const days = clock?.days ?? 0;
-  // Said sent: money payers report sending that nobody has confirmed yet. Dalasi is added up; other currencies are listed.
-  const claimed = data?.claimedAmounts ?? [];
-  const claimedGmd = claimed.find((c) => c.currency === "GMD")?.amount ?? 0;
-  const claimedOther = claimed.filter((c) => c.currency !== "GMD").map((c) => `${c.currency} ${c.amount.toLocaleString("en-GB", { maximumFractionDigits: 2 })}`);
-  const claimedText = [claimedGmd || !claimedOther.length ? money(claimedGmd, "GMD" as never) : null, ...claimedOther].filter(Boolean).join(" + ");
-  const goal = k?.goal ?? RUN.goal;
-  const pct = (n: number) => Math.min(100, (n / goal) * 100);
-  const kpis: { label: string; value: number; delta: ReactNode; icon: Icon; tone: string; f: (n: number) => string; extra?: ReactNode }[] = [
+  const kpis = [
     { label: "Confirmed entries", value: k?.entries ?? 0, delta: `${k?.today ?? 0} booked in the last day`, icon: Users, tone: "text-forest bg-forest-50", f: (n: number) => Math.round(n).toLocaleString("en-GB") },
-    {
-      label: "Raised for the fund",
-      value: k?.raised ?? 0,
-      delta: `Confirmed · ${k ? pct(k.raised).toFixed(1) : 0}% of GMD ${(goal / 1e6).toFixed(0)}m`,
-      icon: CurrencyCircleDollar,
-      tone: "text-ember bg-ember-50",
-      f: (n: number) => `GMD ${Math.round(n).toLocaleString("en-GB")}`,
-      extra: (
-        <>
-          {/* Confirmed in solid green, said-sent on top of it in a lighter green, against the goal. */}
-          <div className="mt-3 flex h-1.5 overflow-hidden rounded-full bg-sand" aria-hidden>
-            <div className="h-full bg-forest" style={{ width: `${pct(k?.raised ?? 0)}%` }} />
-            <div className="h-full bg-forest/35" style={{ width: `${Math.max(claimedGmd ? 1.5 : 0, pct(claimedGmd))}%` }} />
-          </div>
-          <div className="mt-3 flex items-baseline justify-between gap-3 border-t border-line pt-3">
-            <span className="text-[0.8125rem] text-muted">Said sent, not confirmed yet</span>
-            <span className="whitespace-nowrap text-right font-bold text-navy tabular">{data ? `+ ${claimedText}` : "…"}</span>
-          </div>
-        </>
-      ),
-    },
+    { label: "Raised for the fund", value: k?.raised ?? 0, delta: `${k ? ((k.raised / k.goal) * 100).toFixed(1) : 0}% of GMD ${((k?.goal ?? RUN.goal) / 1e6).toFixed(0)}m`, icon: CurrencyCircleDollar, tone: "text-ember bg-ember-50", f: (n: number) => `GMD ${Math.round(n).toLocaleString("en-GB")}` },
     { label: "Waiting for payment", value: k?.pending ?? 0, delta: `${k?.pending_late ?? 0} past day 3`, icon: HourglassMedium, tone: "text-cobalt bg-cobalt-50", f: (n: number) => String(Math.round(n)) },
-    {
-      label: "Say they have paid",
-      value: k?.claimed ?? 0,
-      delta: "Look for these and confirm them",
-      icon: PaperPlaneTilt,
-      tone: "text-ember bg-ember-50",
-      f: (n: number) => String(Math.round(n)),
-      extra: (
-        <div className="mt-3 flex items-baseline justify-between gap-3 border-t border-line pt-3">
-          <span className="text-[0.8125rem] text-muted">Together</span>
-          <span className="whitespace-nowrap text-right font-bold text-navy tabular">{data ? claimedText : "…"}</span>
-        </div>
-      ),
-    },
+    { label: "Say they have paid", value: k?.claimed ?? 0, delta: "Look for these and confirm them", icon: PaperPlaneTilt, tone: "text-ember bg-ember-50", f: (n: number) => String(Math.round(n)) },
   ];
   const abroad = data?.residence?.abroad ?? 0;
   const home = data?.residence?.home ?? 0;
@@ -111,7 +68,7 @@ export default function Overview() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {kpis.map((x, i) => (
-          <motion.div key={x.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }} className="flex flex-col rounded-[1.25rem] border border-line bg-white p-5">
+          <motion.div key={x.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }} className="rounded-[1.25rem] border border-line bg-white p-5">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-muted">{x.label}</span>
               <span className={cn("grid size-9 place-items-center rounded-xl", x.tone)}>
@@ -125,7 +82,6 @@ export default function Overview() {
               {i === 0 && <TrendUp weight="bold" className="size-3.5 text-forest" />}
               {x.delta}
             </p>
-            {x.extra && <div className="mt-auto">{x.extra}</div>}
           </motion.div>
         ))}
       </div>

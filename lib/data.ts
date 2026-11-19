@@ -114,6 +114,12 @@ const RETIRED: RaceEvent[] = [
 
 export const eventById = (id: string) => EVENTS.find((e) => e.id === id) ?? RETIRED.find((e) => e.id === id) ?? EVENTS[0]!;
 
+/**
+ * Dalasi per pound, for adding bookings paid abroad into the fund total. From Modem Pay's rate on 2026-11-19
+ * (USD 1 = GMD 74.74) and the USD rate below. Update it if the dalasi moves a lot.
+ */
+export const GMD_PER_GBP = 95;
+
 export const CURRENCIES: { code: Currency; symbol: string; label: string; perGBP: number }[] = [
   { code: "GBP", symbol: "£", label: "British pound", perGBP: 1 },
   { code: "USD", symbol: "$", label: "US dollar", perGBP: 1.27 },
