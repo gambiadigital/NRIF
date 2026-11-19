@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { Check, BellRinging, ArrowsClockwise, PaperPlaneTilt, ShieldCheck, Copy, CircleNotch, HourglassMedium, ArrowCounterClockwise, Eye, X, WarningCircle, CaretDown } from "@phosphor-icons/react";
+import { Popover } from "radix-ui";
+import { Check, BellRinging, ArrowsClockwise, PaperPlaneTilt, ShieldCheck, Copy, CircleNotch, HourglassMedium, ArrowCounterClockwise, Eye, X, WarningCircle, CaretDown, SquaresFour } from "@phosphor-icons/react";
 import { AdminTitle, Empty, SearchBox, Tabs, Toolbar, type Me } from "@/components/admin/Shell";
 import { BookingDrawer } from "@/components/admin/BookingDrawer";
 import { Badge } from "@/components/ui/fields";
@@ -203,7 +204,7 @@ export default function Payments() {
             ]}
           />
           <div className="flex gap-2 @3xl:ml-auto">
-            <MethodPicker value={only} onChange={pickMethod} />
+            <MethodPicker value={only} onChange={pickMethod} counts={data?.methods ?? []} />
             <SearchBox value={term} onChange={setTerm} placeholder="Reference, name, email or paying number" className="min-w-0 flex-1 @3xl:w-72 @3xl:flex-none" />
           </div>
         </div>
@@ -260,30 +261,112 @@ export default function Payments() {
   );
 }
 
-function MethodPicker({ value, onChange }: { value: string | null; onChange: (v: string | null) => void }) {
+/**
+ * The method filter in the sticky bar: the console's own dropdown (as in components/ui/fields Select), shaped as a pill
+ * to sit with the tabs and search, with each method's logo and how many of its payments are waiting.
+ */
+function MethodPicker({ value, onChange, counts }: { value: string | null; onChange: (v: string | null) => void; counts: Data["methods"] }) {
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(0);
+  const options: { id: string | null; label: string; short: string }[] = [{ id: null, label: "All methods", short: "All methods" }, ...METHODS.map((m) => ({ id: m.id as string, label: m.label, short: m.short }))];
+  const current = options.find((o) => o.id === value) ?? options[0]!;
+  const n = (id: string | null) =>
+    id ? counts.find((c) => c.method === id) : { waiting: counts.reduce((a, c) => a + c.waiting, 0), confirmed: counts.reduce((a, c) => a + c.confirmed, 0) };
+  const pick = (id: string | null) => {
+    onChange(id);
+    setOpen(false);
+  };
+  const openWith = (o: boolean) => {
+    if (o) setActive(Math.max(0, options.findIndex((x) => x.id === value)));
+    setOpen(o);
+  };
+
   return (
-    <label className="relative block w-[9.5rem] shrink-0 @3xl:w-44">
-      <span className="sr-only">Payment method</span>
-      <select
-        value={value ?? ""}
-        onChange={(e) => onChange(e.target.value || null)}
+    <Popover.Root open={open} onOpenChange={openWith}>
+      <Popover.Trigger
+        aria-label={`Payment method: ${current.label}`}
+        onKeyDown={(e) => {
+          if (e.key === "ArrowDown" && !open) {
+            e.preventDefault();
+            openWith(true);
+          }
+        }}
         className={cn(
-          "h-11 w-full cursor-pointer appearance-none truncate rounded-full border pl-4 pr-9 text-[0.9375rem] font-semibold outline-none transition-colors focus:shadow-[0_0_0_4px_rgb(19_95_64/0.15)]",
-          value ? "border-navy bg-navy text-white" : "border-line bg-white text-navy hover:border-line-strong",
+          "flex h-11 w-[11.5rem] shrink-0 items-center gap-2 rounded-full border pl-1.5 pr-3.5 text-left text-[0.9375rem] font-semibold outline-none transition-[border-color,background-color,box-shadow] focus-visible:shadow-[0_0_0_4px_rgb(19_95_64/0.15)] @3xl:w-48",
+          value ? "border-forest bg-forest-50 text-forest" : "border-line bg-white text-navy hover:border-line-strong",
+          open && "border-forest",
         )}
       >
-        <option value="" className="bg-white text-navy">
-          All methods
-        </option>
-        {METHODS.map((m) => (
-          <option key={m.id} value={m.id} className="bg-white text-navy">
-            {m.label}
-          </option>
-        ))}
-      </select>
-      <CaretDown weight="bold" className={cn("pointer-events-none absolute right-3.5 top-1/2 size-4 -translate-y-1/2", value ? "text-white" : "text-muted")} />
-    </label>
+        <MethodIcon id={current.id} small />
+        <span className="min-w-0 flex-1 truncate">{current.short}</span>
+        <CaretDown weight="bold" className={cn("size-3.5 shrink-0 transition-transform", value ? "text-forest" : "text-faint", open && "rotate-180")} />
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Content
+          align="start"
+          sideOffset={8}
+          collisionPadding={16}
+          side="bottom"
+          avoidCollisions={false}
+          className="z-[80] max-h-[var(--radix-popover-content-available-height)] w-72 max-w-[calc(100vw-2rem)] scroll-panel overflow-y-auto overscroll-contain rounded-2xl border border-line bg-white p-1.5 shadow-lift"
+          onKeyDown={(e) => {
+            if (e.key === "ArrowDown") {
+              e.preventDefault();
+              setActive((a) => Math.min(options.length - 1, a + 1));
+            } else if (e.key === "ArrowUp") {
+              e.preventDefault();
+              setActive((a) => Math.max(0, a - 1));
+            } else if (e.key === "Enter") {
+              e.preventDefault();
+              pick(options[active]!.id);
+            }
+          }}
+        >
+          <p className="px-3 pb-1.5 pt-2 font-label text-muted">Show payments made with</p>
+          <div role="listbox" aria-label="Payment method">
+            {options.map((o, i) => {
+              const c = n(o.id);
+              const on = o.id === value;
+              return (
+                <button
+                  key={o.id ?? "all"}
+                  role="option"
+                  aria-selected={on}
+                  onMouseEnter={() => setActive(i)}
+                  onClick={() => pick(o.id)}
+                  className={cn("flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left text-navy transition-colors", i === active && "bg-paper", i === 0 && "mb-1")}
+                >
+                  <MethodIcon id={o.id} />
+                  <span className="min-w-0 flex-1">
+                    <span className={cn("block truncate text-[0.9375rem]", on ? "font-bold" : "font-semibold")}>{o.label}</span>
+                    <span className="block truncate text-xs text-muted">
+                      {c?.waiting ?? 0} waiting · {c?.confirmed ?? 0} confirmed
+                    </span>
+                  </span>
+                  {on && <Check weight="bold" className="size-4 shrink-0 text-forest" />}
+                </button>
+              );
+            })}
+          </div>
+          {value && (
+            <p className="mx-1.5 mt-1.5 rounded-xl bg-paper px-3 py-2 text-xs text-muted">Remembered on this device. Share the page link to give a colleague the same view.</p>
+          )}
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
   );
+}
+
+/** A method's logo in the picker; "All methods" gets a neutral grid mark. */
+function MethodIcon({ id, small }: { id: string | null; small?: boolean }) {
+  const size = small ? "h-8 w-11 rounded-full" : "h-9 w-12 rounded-lg";
+  if (!id)
+    return (
+      <span className={cn("grid shrink-0 place-items-center bg-sand text-navy", size)}>
+        <SquaresFour weight="fill" className="size-4" />
+      </span>
+    );
+  return <PayMark id={id as never} className={size} />;
 }
 
 function PaymentRow({ r, now, reminding, onConfirm, onRemind, onRelease, onOpen }: { r: Row; now: number; reminding: boolean; onConfirm: () => void; onRemind: () => void; onRelease: () => void; onOpen: () => void }) {
