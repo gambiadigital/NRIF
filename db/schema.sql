@@ -207,7 +207,7 @@ create table if not exists settings (
   updated_at timestamptz not null default now()
 );
 
--- Confirm a booking: mark it paid, issue a bib to every participant from its event's range, give it a steps code,
+-- Confirm a booking: mark it paid (and by whom), issue a bib to every participant from its event's range, give it a steps code,
 -- attach the receipt, and log it. One statement from the app, all-or-nothing inside Postgres.
 create or replace function confirm_booking(p_booking uuid, p_receipt uuid, p_actor text, p_auto boolean)
 returns table (participant_id uuid, bib text)
@@ -239,6 +239,7 @@ begin
   update bookings
      set status = 'paid',
          paid_at = now(),
+         confirmed_by = p_actor,
          steps_code = case when steps then 'SC-' || regexp_replace(lead_bib, '\D', '', 'g') else null end
    where id = p_booking;
 
@@ -248,7 +249,7 @@ begin
 
   insert into activity (actor, kind, text, booking_id)
   select p_actor, 'confirm',
-         b.reference || case when p_auto then ' auto-matched.' else ' matched by ' || p_actor || '.' end ||
+         b.reference || case when p_auto then ' confirmed automatically (' || p_actor || ').' else ' confirmed by ' || p_actor || '.' end ||
          ' Bibs ' || string_agg(pa.bib, ', ' order by pa.position) || ' issued.',
          p_booking
     from participants pa where pa.booking_id = p_booking;
@@ -267,8 +268,8 @@ create table if not exists code_requests (
 create index if not exists code_requests_email_idx on code_requests (lower(email), at desc);
 create index if not exists bookings_email_idx on bookings (lower(email));
 
--- Visa and Mastercard through the Mastercard Payment Gateway. One row per checkout attempt (order RFI-XXXX-C1, -C2...).
--- The gateway's Retrieve Order is the only source of truth; this table only remembers which orders to ask about.
+-- Visa and Mastercard through Modem Pay. One row per checkout attempt (order RFI-XXXX-C1, -C2...). session_id holds Modem
+-- Pay's payment intent id and success_indicator its intent_secret. Modem Pay's verify endpoint is the only source of truth.
 create table if not exists card_payments (
   order_id          text primary key,
   booking_id        uuid not null references bookings(id),
@@ -293,3 +294,10 @@ alter table bookings add column if not exists payer_from text;
 -- first name, events and amount, and nothing else (no My entry, no contact details).
 alter table bookings add column if not exists pay_token text;
 create unique index if not exists bookings_pay_token_idx on bookings (pay_token);
+
+-- Accounts that can sign in but stay out of the team's view (the developer's): not listed in Settings, and their
+-- actions are left out of the audit and activity views.
+alter table admins add column if not exists hidden boolean not null default false;
+
+-- Who confirmed the payment: the staff member's account name, or the provider ("Card (Modem Pay)") for automatic ones.
+alter table bookings add column if not exists confirmed_by text;

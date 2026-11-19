@@ -3,17 +3,17 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "motion/react";
-import { TrendUp, Users, CurrencyCircleDollar, HourglassMedium, WarningCircle, ArrowRight, DownloadSimple } from "@phosphor-icons/react";
+import { TrendUp, Users, CurrencyCircleDollar, HourglassMedium, PaperPlaneTilt, ArrowRight, DownloadSimple } from "@phosphor-icons/react";
 import { AdminTitle, Panel, Empty } from "@/components/admin/Shell";
 import { AreaChart, BarList, Donut } from "@/components/admin/Charts";
 import { CitiesMap } from "@/components/CitiesMap";
 import { CountUp } from "@/components/ui/motion";
 import { RUN } from "@/lib/data";
-import { useAdmin, hhmm } from "@/lib/admin-client";
+import { useAdmin, hhmm, dayLabel } from "@/lib/admin-client";
 import { cn } from "@/lib/cn";
 
 type Overview = {
-  kpis: { entries: number; bookings: number; pending: number; pending_late: number; unmatched: number; raised: number; today: number; goal: number };
+  kpis: { entries: number; bookings: number; pending: number; pending_late: number; claimed: number; raised: number; today: number; goal: number };
   daily: { day: string; n: number }[];
   byEvent: { id: string; name: string; n: number }[];
   bySource: { source: string; n: number }[];
@@ -41,10 +41,10 @@ export default function Overview() {
   }, []);
   const days = clock?.days ?? 0;
   const kpis = [
-    { label: "Paid entries", value: k?.entries ?? 0, delta: `${k?.today ?? 0} booked in the last day`, icon: Users, tone: "text-forest bg-forest-50", f: (n: number) => Math.round(n).toLocaleString("en-GB") },
+    { label: "Confirmed entries", value: k?.entries ?? 0, delta: `${k?.today ?? 0} booked in the last day`, icon: Users, tone: "text-forest bg-forest-50", f: (n: number) => Math.round(n).toLocaleString("en-GB") },
     { label: "Raised for the fund", value: k?.raised ?? 0, delta: `${k ? ((k.raised / k.goal) * 100).toFixed(1) : 0}% of GMD ${((k?.goal ?? RUN.goal) / 1e6).toFixed(0)}m`, icon: CurrencyCircleDollar, tone: "text-ember bg-ember-50", f: (n: number) => `GMD ${Math.round(n).toLocaleString("en-GB")}` },
     { label: "Waiting for payment", value: k?.pending ?? 0, delta: `${k?.pending_late ?? 0} past day 3`, icon: HourglassMedium, tone: "text-cobalt bg-cobalt-50", f: (n: number) => String(Math.round(n)) },
-    { label: "Unmatched receipts", value: k?.unmatched ?? 0, delta: "Need matching by hand", icon: WarningCircle, tone: "text-ember bg-ember-50", f: (n: number) => String(Math.round(n)) },
+    { label: "Say they have paid", value: k?.claimed ?? 0, delta: "Look for these and confirm them", icon: PaperPlaneTilt, tone: "text-ember bg-ember-50", f: (n: number) => String(Math.round(n)) },
   ];
   const abroad = data?.residence?.abroad ?? 0;
   const home = data?.residence?.home ?? 0;
@@ -60,7 +60,7 @@ export default function Overview() {
               <DownloadSimple weight="bold" className="size-4" /> Export entries
             </a>
             <Link href="/admin/payments" className="flex h-11 items-center gap-2 rounded-full bg-forest px-5 text-[0.9375rem] font-semibold text-white hover:bg-forest-700">
-              Match payments <ArrowRight weight="bold" className="size-4" />
+              Confirm payments <ArrowRight weight="bold" className="size-4" />
             </Link>
           </>
         }
@@ -113,23 +113,32 @@ export default function Overview() {
         </Panel>
       </div>
 
-      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <Panel title="Paid entries by event">
+      <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-3">
+        <Panel title="Confirmed entries by event">
           {data && <BarList rows={data.byEvent.map((e) => ({ label: e.name, value: e.n, color: EVENT_COLOURS[e.id] ?? "#0b1b3a" }))} />}
         </Panel>
-        <Panel title="Paid entries by source tag">
-          {data && (data.bySource.length ? <BarList rows={data.bySource.map((c, i) => ({ label: c.source, value: c.n, color: SOURCE_COLOURS[i % SOURCE_COLOURS.length]!, sub: `?src=${c.source}` }))} /> : <Empty>No paid entries yet.</Empty>)}
+        <Panel title="Confirmed entries by source tag">
+          {data && (data.bySource.length ? <BarList rows={data.bySource.map((c, i) => ({ label: c.source, value: c.n, color: SOURCE_COLOURS[i % SOURCE_COLOURS.length]!, sub: `?src=${c.source}` }))} /> : <Empty>No confirmed entries yet.</Empty>)}
         </Panel>
-        <Panel title="Activity" aside={<Link href="/admin/payments" className="-my-1.5 rounded-full px-2.5 py-1.5 text-sm font-semibold text-forest hover:bg-forest-50">Payments</Link>}>
+        <Panel title="Activity" className="flex flex-col md:col-span-2 2xl:col-span-1" aside={<Link href="/admin/audit" className="-my-1.5 rounded-full px-2.5 py-1.5 text-sm font-semibold text-forest hover:bg-forest-50">Full audit</Link>}>
           {data && (data.activity.length ? (
-            <ol className="space-y-3.5">
-              {data.activity.map((a) => (
-                <li key={a.at + a.text} className="flex gap-3 text-sm">
-                  <span className="w-10 shrink-0 font-mono text-xs font-semibold text-muted">{hhmm(a.at)}</span>
-                  <span className="text-navy">{a.text}</span>
-                </li>
-              ))}
-            </ol>
+            <div className="scroll-panel -mx-2 max-h-[22rem] overflow-y-auto overscroll-contain px-2 lg:max-h-[26rem]">
+              <ol className="space-y-3.5 pb-1">
+                {data.activity.map((a, i) => {
+                  const day = dayLabel(a.at);
+                  const newDay = i === 0 || dayLabel(data.activity[i - 1]!.at) !== day;
+                  return (
+                    <li key={a.at + a.text} className="text-sm">
+                      {newDay && <p className="sticky top-0 z-[1] -mx-1 mb-2.5 bg-white/95 px-1 py-1 font-label text-muted backdrop-blur">{day}</p>}
+                      <div className="flex gap-3">
+                        <span className="w-10 shrink-0 font-mono text-xs font-semibold text-muted">{hhmm(a.at)}</span>
+                        <span className="text-navy">{a.text}</span>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ol>
+            </div>
           ) : <Empty>Nothing has happened yet.</Empty>)}
         </Panel>
       </div>

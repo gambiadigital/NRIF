@@ -28,12 +28,10 @@ npm run dev
 | `NEXT_PUBLIC_SITE_URL` | The public address, used in text-message links and as the origin for Neon Auth |
 | `NEON_AUTH_BASE_URL` | Neon Auth (Managed Better Auth) URL for the branch; sends and checks the email sign-in codes |
 | `WAVE_API_KEY`, `WAVE_WEBHOOK_SECRET` | Optional. Wave Checkout API: makes Wave instant and confirms bookings automatically |
-| `MPGS_MERCHANT_ID`, `MPGS_API_PASSWORD` | Visa and Mastercard through the Mastercard Payment Gateway. Card payments appear only when both are set. The test merchant ID starts with `TEST` |
-| `MPGS_GATEWAY` | Gateway host. Default `mtf.gateway.mastercard.com` (the test facility); the bank gives the live host |
-| `MPGS_CURRENCIES` | Currencies the merchant account takes by card, comma-separated. Default `GMD` |
-| `MPGS_WEBHOOK_SECRET` | Optional. The notification secret from Merchant Administration, for `/api/webhooks/mpgs` |
-| `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM` | Optional. Sends the texts |
-| `RESEND_API_KEY`, `EMAIL_FROM` | Optional. Sends the emails |
+| `MODEMPAY_SECRET_KEY` | Visa and Mastercard through Modem Pay (`sk_live_…`). Card payments appear only when it is set |
+| `MODEMPAY_CURRENCIES` | Optional. Currencies taken by card, comma-separated. Default `GMD`, the only one Modem Pay takes cards in today |
+| `MODEMPAY_WEBHOOK_SECRET` | Optional. Only if an account webhook is added in the Modem Pay dashboard; each payment already carries its own signed callback |
+| `RESEND_API_KEY`, `EMAIL_FROM` | Sends the emails (Resend). `EMAIL_FROM` is an address on a domain verified in Resend, such as `Run for Independence <run@nrif.gm>`. Until both are set, emails wait in the outbox |
 
 ## How it works
 
@@ -54,13 +52,14 @@ record each receipt in **Admin → Payments**; a receipt quoting a waiting refer
 itself, anything else is matched by hand. Matching runs `confirm_booking()` in Postgres, which marks the booking paid,
 issues the next bib in each event's range (virtual entries get a `V` prefix), all in one transaction. The payer's screen notices within seconds and shows their bibs.
 
-**Cards.** Visa and Mastercard go through the Mastercard Payment Gateway's Hosted Checkout (API version 100): the payer
-types the card on Mastercard's page, never ours. Each try is its own order (`RFI-7Q4K-C1`, `-C2`...). When the payer comes
-back, the pending page asks our server, which asks the gateway (Retrieve Order) whether the money was captured; if it
-was, it records a `card` receipt and runs `confirm_booking()`, so bibs arrive at once. The gateway's webhook and the daily
-job run the same check, so a payer who closes the tab is still confirmed. Card shows only for bookings in a currency
-listed in `MPGS_CURRENCIES`. Test cards: Mastercard 5123 4500 0000 0008 or Visa 4508 7500 1574 1019, expiry 01/39
-(approved) or 05/39 (declined), security code 100.
+**Cards.** Visa and Mastercard go through Modem Pay. For each try our server creates a payment intent for the booking's
+exact amount, limited to cards, and sends the payer to Modem Pay's checkout page; the card is typed there, never on ours.
+Each try is its own order (`RFI-7Q4K-C1`, `-C2`...), carried in the intent's metadata. The intent also sets a
+`callback_url` (`/api/webhooks/modempay`), signed with HMAC-SHA512 keyed by sha256 of the secret key, so no dashboard webhook
+is needed. Whatever the trigger (the payer coming back, the callback, or the daily job), the server asks Modem Pay's verify
+endpoint whether the intent is `successful` for the full amount before it records a `card` receipt and runs
+`confirm_booking()`. Modem Pay takes cards in GMD only, from GMD 74.74 (USD 1) up, so card shows for dalasi bookings.
+Checkout links expire after 20 minutes.
 
 **Wave without the API.** NRIF's Wave merchant link (`https://pay.wave.com/m/M_gm_CedMPBz-cNJ4/c/gm/`; the longer
 `/mu/U_gm_…` form returns 404) has no box for a reference. So the Wave tab asks payers for the Wave number they paid

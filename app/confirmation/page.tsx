@@ -117,7 +117,7 @@ function Confirmation() {
 
           <motion.ul initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.75 }} className="mt-8 w-full max-w-xl divide-y divide-line border-y border-line text-left">
             {[
-              { href: "/my-entry", icon: ChatCircleText, t: "Confirmation by text and email", s: "With your bib numbers and a QR code" },
+              { href: "/my-entry", icon: ChatCircleText, t: "Confirmation by email", s: "With your bib numbers and a QR code" },
               { href: "/my-entry", icon: UserCircle, t: "Manage your entry", s: "See your bibs, or give a place to someone else until 9 Jan" },
             ].map((x) => (
               <li key={x.t}>

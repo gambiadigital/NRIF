@@ -1,10 +1,10 @@
 import { q, log } from "@/lib/server/db";
 import { HttpError, json, route } from "@/lib/server/http";
 import { flushOutbox, queueForBooking } from "@/lib/server/messages";
-import { settleOpenCards } from "@/lib/server/mpgs";
+import { settleOpenCards } from "@/lib/server/modempay";
 
 /*
- * Once a day (vercel.json): release unpaid places after their 5-day hold, remind on day 3, send the race-week texts on
+ * Once a day (vercel.json): release unpaid places after their 5-day hold, remind on day 3, send the race-week emails on
  * their dates, then push the outbox. Vercel calls it with "Authorization: Bearer $CRON_SECRET".
  */
 export const GET = route(async (req: Request) => {

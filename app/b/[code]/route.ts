@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { connection } from "next/server";
 import { one } from "@/lib/server/db";
 
-/** Short links printed in texts: /b/7Q4K-a8Kd2f3x → the booking's own page. */
+/** Short links printed in emails: /b/7Q4K-a8Kd2f3x → the booking's own page. */
 export async function GET(req: NextRequest, ctx: RouteContext<"/b/[code]">) {
   await connection();
   const { code } = await ctx.params;

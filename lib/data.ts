@@ -184,7 +184,7 @@ export const BANJUL = { lat: 13.45, lng: -16.58 };
 
 export const PAYMENT_METHODS = {
   wave: { id: "wave", name: "Wave", note: "Pay in the Wave app", home: true, abroad: false },
-  card: { id: "card", name: "Visa or Mastercard", note: "Debit or credit card, on Mastercard's secure page", home: true, abroad: true },
+  card: { id: "card", name: "Visa or Mastercard", note: "Debit or credit card, on Modem Pay's secure page", home: true, abroad: true },
   yonna: { id: "yonna", name: "Yonna", note: "Yonna Islamic Microfinance", home: true, abroad: false },
   ecobank: { id: "ecobank", name: "Ecobank", note: "Bank transfer or scan with your banking app", home: true, abroad: true },
   remit: { id: "remit", name: "Remitly or ACE", note: "Send to NRIF's Yonna or Wave number", home: false, abroad: true },
@@ -219,7 +219,7 @@ export const FAQS = [
   },
   {
     q: "When do I get my bib number?",
-    a: "As soon as your payment is matched. You see it on screen, and we send it by text and email. The bib on screen is only a picture: the bib you are given will look different, and NRIF does not print names on bibs.",
+    a: "As soon as NRIF confirms your payment. You see it on screen, and we email it to you. The bib on screen is only a picture: the bib you are given will look different, and NRIF does not print names on bibs.",
   },
   {
     q: "What time does it start?",

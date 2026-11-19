@@ -29,7 +29,7 @@ export default function Events() {
         {!data && [0, 1, 2, 3].map((i) => <div key={i} className="h-72 animate-pulse rounded-[1.25rem] bg-white" />)}
       </div>
       <p className="mt-4 flex items-center gap-2 text-sm text-muted">
-        <Info weight="fill" className="size-4" /> Bibs are issued in order as payments are matched. A range can&apos;t shrink below a number already issued.
+        <Info weight="fill" className="size-4" /> Bibs are issued in order as payments are confirmed. A range can&apos;t shrink below a number already issued.
       </p>
     </div>
   );

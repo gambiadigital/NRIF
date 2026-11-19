@@ -13,19 +13,19 @@ insert into teams (code, name, kind) values
 on conflict (code) do nothing;
 
 insert into templates (id, name, channel, when_label, body) values
-  ('pending',  'Reference code',       'sms', 'When a booking is made',
+  ('pending',  'Reference code',       'email', 'When a booking is made',
    'Run for Independence: your place is held until {hold}. Pay {amount} with reference {ref}. Details: {link}'),
-  ('confirm',  'Confirmation',         'sms', 'When a payment is matched',
+  ('confirm',  'Confirmation',         'email', 'When a payment is confirmed',
    'Run for Independence: You''re in, {first}. {event}, bib {bib}. Sat 30 Jan, gates 06:30, {start} start, Independence Stadium. {link}'),
-  ('confirm-virtual', 'Virtual confirmation', 'sms', 'When a virtual entry is paid',
+  ('confirm-virtual', 'Virtual confirmation', 'email', 'When a virtual entry is paid',
    'Run for Independence: You''re in, {first}. {event}, e-bib {bib}. Run 5 or 10 km any day 23-31 Jan, upload by 2 Feb: {link}'),
-  ('reminder3', 'Pending reminder',    'sms', 'Day 3 of a 5-day hold',
+  ('reminder3', 'Pending reminder',    'email', 'Day 3 of a 5-day hold',
    'Your Run for Independence place is held until {hold}. Pay {amount} with reference {ref}. Already paid? Ignore this.'),
-  ('race-7',   '7 days to go',         'sms', 'Sat 23 Jan, 09:00',
+  ('race-7',   '7 days to go',         'email', 'Sat 23 Jan, 09:00',
    '7 days to go, {first}. Sat 30 Jan at Independence Stadium: gates 06:30, start 07:30. Bibs {bibs}. Latest plan: {link}'),
-  ('race-1',   'Tomorrow',             'sms', 'Fri 29 Jan, 18:00',
+  ('race-1',   'Tomorrow',             'email', 'Fri 29 Jan, 18:00',
    'Tomorrow. Gates open 06:30, {event} starts {start}. Bring water and your bib. See you at Independence Stadium.'),
-  ('virtual-open', 'Run window opens', 'sms', 'Sat 23 Jan, 07:00',
+  ('virtual-open', 'Run window opens', 'email', 'Sat 23 Jan, 07:00',
    'The run window is open, {first}. Run your {event} any day to 31 Jan and upload a screenshot or link: {link}')
 on conflict (id) do nothing;
 

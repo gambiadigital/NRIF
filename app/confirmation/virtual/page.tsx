@@ -78,7 +78,7 @@ function VirtualConfirmation() {
             <div>
               <h1 className="font-race text-[clamp(2.6rem,7vw,4.6rem)] text-navy">You&apos;re in, {lead.fullName.split(" ")[0]}</h1>
               <p className="text-muted">
-                {ev.name} · payment matched · {money(b.total, b.currency as never, { decimals: b.currency !== "GMD" })}
+                {ev.name} · payment confirmed · {money(b.total, b.currency as never, { decimals: b.currency !== "GMD" })}
               </p>
             </div>
           </div>

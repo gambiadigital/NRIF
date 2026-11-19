@@ -28,7 +28,7 @@ export async function POST(req: Request) {
   if (b && b.status === "pending" && b.currency === "GMD" && Number(d.amount) >= Number(b.total)) {
     await confirmBooking(b.id, receipt.id, "Wave", true);
   } else {
-    await log("receipt", `Wave payment ${d.id} of GMD ${d.amount} for ${d.client_reference ?? "no reference"} needs matching by hand.`);
+    await log("receipt", `Wave payment ${d.id} of GMD ${d.amount} for ${d.client_reference ?? "no reference"} needs checking by hand.`);
   }
   return Response.json({ ok: true });
 }

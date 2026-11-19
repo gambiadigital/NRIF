@@ -1,10 +1,10 @@
 import { q, settings } from "@/lib/server/db";
 import { json, route } from "@/lib/server/http";
 
-/** The landing page's live numbers: money matched, paid entries, cities abroad, and the biggest teams. */
+/** The landing page's live numbers: money confirmed, paid entries, cities abroad, and the biggest teams. */
 export const GET = route(async () => {
   const [[raised], [entries], cities, teams, s] = await Promise.all([
-  q<{ v: string }>("select coalesce(sum(amount), 0) as v from receipts where status = 'matched' and currency = 'GMD'"),
+  q<{ v: string }>("select coalesce(sum(total), 0) as v from bookings where status = 'paid' and currency = 'GMD'"),
   q<{ v: number; abroad: number }>(
     "select count(*)::int as v, count(*) filter (where b.residence = 'abroad')::int as abroad from participants p join bookings b on b.id = p.booking_id where b.status = 'paid'",
   ),

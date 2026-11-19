@@ -66,7 +66,7 @@ export default function Payment() {
       });
       saveBooking(created);
       s.reset();
-      // For a card, the pending page opens Mastercard's payment page straight away; coming back lands there too.
+      // For a card, the pending page opens Modem Pay's card page straight away; coming back lands there too.
       router.push(`/register/pending?ref=${created.reference}&k=${encodeURIComponent(created.key)}${method === "card" ? "&pay=card" : ""}`);
     } catch (e) {
       const msg = (e as Error).message;
@@ -196,10 +196,10 @@ export default function Payment() {
       <p className="mt-5 flex items-start gap-2 text-[0.8125rem] text-muted">
         <ShieldCheck weight="fill" className="mt-0.5 size-4 shrink-0 text-forest" />
         {method === "card"
-          ? "Next you enter your card on Mastercard's secure page. NRIF never sees your card number, and your bib numbers arrive the moment the payment goes through."
+          ? "Next you enter your card on Modem Pay's secure page. NRIF never sees your card number, and your bib numbers arrive the moment the payment goes through."
           : instant
           ? "You approve the payment in the Wave app, and your bib numbers arrive the moment it lands."
-          : "Next you get a reference code to quote with your payment. Your place is held for 5 days while it reaches NRIF, and your bib numbers arrive by text and email once it is matched."}
+          : "Next you get a reference code to quote with your payment. Your place is held for 5 days while it reaches NRIF, and your bib numbers arrive by email once NRIF confirms it."}
       </p>
 
       {error && (

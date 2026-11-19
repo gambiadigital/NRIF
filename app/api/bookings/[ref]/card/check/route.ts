@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { json, route } from "@/lib/server/http";
 import { payerBooking } from "@/lib/server/entry";
-import { cardEnabled, settleBookingCards } from "@/lib/server/mpgs";
+import { cardEnabled, settleBookingCards } from "@/lib/server/modempay";
 
 /** The payer is back from the card page: ask the gateway what happened, and confirm the booking if the money is in. */
 export const POST = route(async (req: NextRequest, ctx: RouteContext<"/api/bookings/[ref]/card/check">) => {

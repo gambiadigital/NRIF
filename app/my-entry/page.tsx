@@ -261,7 +261,7 @@ function Dashboard({ b, reload }: { b: ClientBooking; reload: () => Promise<void
           <HourglassMedium weight="duotone" className="size-8 shrink-0 text-cobalt" />
           <div className="flex-1">
             <p className="font-bold text-navy">{b.status === "pending" ? "Waiting for your payment" : "This place was released"}</p>
-            <p className="text-sm text-muted">{b.status === "pending" ? `Send ${amount} with reference ${b.reference} by ${formatHold(b.holdUntil)}. Bibs arrive once it is matched.` : "No payment arrived within the hold. Book again, or contact NRIF if you have paid."}</p>
+            <p className="text-sm text-muted">{b.status === "pending" ? `Send ${amount} with reference ${b.reference} by ${formatHold(b.holdUntil)}. Bibs arrive once NRIF confirms it.` : "No payment arrived within the hold. Book again, or contact NRIF if you have paid."}</p>
           </div>
           {b.status === "pending" && (
             <Link href="/register/pending" className="flex h-11 shrink-0 items-center justify-center gap-2 rounded-full bg-navy px-5 font-semibold text-white">
