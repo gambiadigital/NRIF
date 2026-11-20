@@ -13,7 +13,7 @@ import { cn } from "@/lib/cn";
 
 type Template = { id: string; name: string; when_label: string; body: string; enabled: boolean };
 type Log = { id: number; to_addr: string; template: string; subject: string | null; status: string; error: string | null; created_at: string; sent_at: string | null; reference: string | null };
-type Outbox = { log: Log[]; counts: { queued: number; sent: number; failed: number } | null; providers: { email: boolean } };
+type Outbox = { log: Log[]; counts: { queued: number; sent: number; failed: number } | null; providers: { email: boolean; emailKey: boolean } };
 
 // Sample values so the preview reads like a real email.
 const SAMPLE: Record<string, string> = { first: "Fatoumata", event: "5 km Run", bib: "4047", bibs: "4047, 7012, 7013", start: "07:30", link: "run4independence.nrif.gm/b/7Q4K-a8Kd2f3x", hold: "Sun 25 Jan, 23:59", amount: "GMD 300", ref: "RFI-7Q4K" };
@@ -39,8 +39,9 @@ export default function AdminMessages() {
   async function sendNow() {
     setSending(true);
     try {
-      const r = await api<{ sent: number }>("/api/admin/messages", { method: "POST" });
-      toast.success(r.sent ? `${r.sent} ${r.sent === 1 ? "email" : "emails"} sent` : "Nothing was sent", { description: r.sent ? undefined : "Either nothing is waiting, or a send failed: see the outbox." });
+      const r = await api<{ sent: number; error?: string }>("/api/admin/messages", { method: "POST" });
+      if (r.error) toast.error(r.sent ? `${r.sent} sent, then sending stopped` : "Sending stopped", { description: `The rest are still waiting. ${r.error}` });
+      else toast.success(r.sent ? `${r.sent} ${r.sent === 1 ? "email" : "emails"} sent` : "Nothing was sent", { description: r.sent ? undefined : "Either nothing is waiting, or a send failed: see the outbox." });
       await m.reload();
     } catch (e) {
       toast.error((e as Error).message);
@@ -68,6 +69,10 @@ export default function AdminMessages() {
             {p.email ? (
               <>
                 <b>Email is connected.</b> Emails go out as soon as they are queued. Texts are off: everything goes by email.
+              </>
+            ) : p.emailKey ? (
+              <>
+                <b>Resend is connected, but no sending address is set yet.</b> Emails go out once NRIF&apos;s domain is verified in Resend and the sending address is added. {queued} {queued === 1 ? "email is" : "emails are"} waiting until then.
               </>
             ) : (
               <>

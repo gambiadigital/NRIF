@@ -31,7 +31,7 @@ npm run dev
 | `MODEMPAY_SECRET_KEY` | Visa and Mastercard through Modem Pay (`sk_live_…`). Card payments appear only when it is set |
 | `MODEMPAY_CURRENCIES` | Optional. Currencies taken by card, comma-separated. Default `GMD`, the only one Modem Pay takes cards in today |
 | `MODEMPAY_WEBHOOK_SECRET` | Optional. Only if an account webhook is added in the Modem Pay dashboard; each payment already carries its own signed callback |
-| `RESEND_API_KEY`, `EMAIL_FROM` | Sends the emails (Resend). `EMAIL_FROM` is an address on a domain verified in Resend, such as `Run for Independence <run@nrif.gm>`. Until both are set, emails wait in the outbox |
+| `RESEND_API_KEY`, `EMAIL_FROM` | Sends the emails (Resend; the key is sending-only). `EMAIL_FROM` is an address on a domain verified in Resend, such as `Run for Independence <run@nrif.gm>`. Until both are set, emails wait in the outbox. Replies go to the contact email in Admin → Settings. If Resend refuses the account (bad key, unverified domain, rate limit), sending stops and the emails stay queued |
 
 ## How it works
 

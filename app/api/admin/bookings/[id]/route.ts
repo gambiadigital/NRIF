@@ -44,7 +44,7 @@ export const POST = route(async (req: Request, ctx: RouteContext<"/api/admin/boo
     await queueForBooking(id, "reminder3");
     await q("update bookings set reminded_at = now() where id = $1", [id]);
     await log("remind", `${admin.name} sent ${b.reference} a payment reminder.`, { actor: admin.name, bookingId: id });
-    await flushOutbox(5).catch(() => {});
+    await flushOutbox(5, id).catch(() => {});
     return json({ ok: true, emailed: providers().email });
   }
   const done = await one("update bookings set status = 'released' where id = $1 and status = 'pending' returning id", [id]);

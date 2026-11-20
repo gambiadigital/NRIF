@@ -26,7 +26,7 @@ import { useAdmin } from "@/lib/admin-client";
 import { initials } from "@/lib/format";
 import { cn } from "@/lib/cn";
 
-export type Me = { name: string; email: string; role: string; badges: { payments: number; virtual: number } | null; providers: { email: boolean }; waveCheckout: boolean };
+export type Me = { name: string; email: string; role: string; badges: { payments: number; virtual: number } | null; providers: { email: boolean; emailKey: boolean }; waveCheckout: boolean };
 
 const NAV = [
   { href: "/admin", label: "Overview", icon: SquaresFour },

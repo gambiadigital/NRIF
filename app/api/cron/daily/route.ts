@@ -41,6 +41,6 @@ export const GET = route(async (req: Request) => {
     raceTexts += ids.length;
   }
 
-  const { sent } = await flushOutbox(200);
+  const { sent } = await flushOutbox(90);
   return json({ cardsPaid, released: released.length, reminders: due.length, raceTexts, sent });
 });

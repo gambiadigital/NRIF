@@ -1,5 +1,5 @@
 import "server-only";
-import { q, one } from "./db";
+import { q, one, settings } from "./db";
 import { COUNTRY_CODES, money } from "@/lib/format";
 import { emailFooter, render, subjectFor } from "@/lib/messages";
 
@@ -68,9 +68,13 @@ export async function queueForBooking(bookingId: string, templateId: string) {
   ]);
 }
 
+/** email: emails can go out. emailKey: the Resend key is in, but EMAIL_FROM (a verified sender) may still be missing. */
 export function providers() {
-  return { email: !!(process.env.RESEND_API_KEY && process.env.EMAIL_FROM) };
+  return { email: !!(process.env.RESEND_API_KEY && process.env.EMAIL_FROM), emailKey: !!process.env.RESEND_API_KEY };
 }
+
+/** A problem with the account (key, unverified sender domain, rate limit, outage), not with one email: stop, keep the rest queued. */
+class ProviderError extends Error {}
 
 const esc = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
@@ -89,31 +93,51 @@ function emailHtml(text: string) {
 ${paras}</div></div></body></html>`;
 }
 
-async function sendEmail(to: string, subject: string, text: string) {
+async function sendEmail(to: string, subject: string, text: string, replyTo: string | undefined) {
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ from: process.env.EMAIL_FROM, to, subject, text, html: emailHtml(text) }),
+    body: JSON.stringify({ from: process.env.EMAIL_FROM, to, subject, text, html: emailHtml(text), ...(replyTo ? { reply_to: replyTo } : {}) }),
+    signal: AbortSignal.timeout(15_000),
   });
-  if (!res.ok) throw new Error(`Email ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  if (res.ok) return;
+  const msg = `Email ${res.status}: ${(await res.text()).slice(0, 200)}`;
+  if (res.status === 401 || res.status === 403 || res.status === 429 || res.status >= 500) throw new ProviderError(msg);
+  throw new Error(msg);
 }
 
-/** Sends what it can. With no email provider, emails stay queued. */
-export async function flushOutbox(limit = 25) {
+/**
+ * Sends what it can, oldest first; with bookingId, only that booking's emails (so a confirmation goes out at once
+ * without waiting behind a backlog). Resend takes about 2 requests a second, so sends are spaced. If the account itself
+ * is the problem (see ProviderError), it stops and the emails stay queued for the next try instead of being marked failed.
+ * Replies go to NRIF's contact email from Settings.
+ */
+export async function flushOutbox(limit = 25, bookingId?: string) {
   if (!providers().email) return { sent: 0 };
   const rows = await q<{ id: number; to_addr: string; subject: string | null; body: string }>(
-    "select id, to_addr, subject, body from messages where status = 'queued' and channel = 'email' order by id limit $1",
-    [limit],
+    `select id, to_addr, subject, body from messages
+      where status = 'queued' and channel = 'email' and ($2::uuid is null or booking_id = $2::uuid)
+      order by id limit $1`,
+    [limit, bookingId ?? null],
   );
+  if (!rows.length) return { sent: 0 };
+  const replyTo = (await settings(["contact_email"])).contact_email?.trim() || undefined;
   let sent = 0;
-  for (const m of rows) {
+  let error: string | undefined;
+  for (const [i, m] of rows.entries()) {
+    if (i > 0) await new Promise((r) => setTimeout(r, 550));
     try {
-      await sendEmail(m.to_addr, m.subject ?? "Run for Independence", m.body);
+      await sendEmail(m.to_addr, m.subject ?? "Run for Independence", m.body, replyTo);
       await q("update messages set status = 'sent', sent_at = now(), error = null where id = $1", [m.id]);
       sent++;
     } catch (e) {
+      if (e instanceof ProviderError) {
+        error = e.message;
+        console.error("email provider", e.message);
+        break;
+      }
       await q("update messages set status = 'failed', error = $2 where id = $1", [m.id, String((e as Error).message).slice(0, 300)]);
     }
   }
-  return { sent };
+  return { sent, ...(error ? { error } : {}) };
 }
