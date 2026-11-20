@@ -2,7 +2,7 @@ import { z } from "zod";
 import { q, one, log } from "@/lib/server/db";
 import { HttpError, body, json, requireAdmin, route } from "@/lib/server/http";
 import { bookingById, confirmBooking, participantsOf } from "@/lib/server/bookings";
-import { flushOutbox, providers, queueForBooking, shortLink } from "@/lib/server/messages";
+import { providers, queueForBooking, sendSoon, shortLink } from "@/lib/server/messages";
 import { visibleActor } from "@/lib/server/admin";
 
 /** Everything about one booking, for the booking drawer. */
@@ -44,7 +44,7 @@ export const POST = route(async (req: Request, ctx: RouteContext<"/api/admin/boo
     await queueForBooking(id, "reminder3");
     await q("update bookings set reminded_at = now() where id = $1", [id]);
     await log("remind", `${admin.name} sent ${b.reference} a payment reminder.`, { actor: admin.name, bookingId: id });
-    await flushOutbox(5, id).catch(() => {});
+    sendSoon(id);
     return json({ ok: true, emailed: providers().email });
   }
   const done = await one("update bookings set status = 'released' where id = $1 and status = 'pending' returning id", [id]);

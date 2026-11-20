@@ -3,7 +3,7 @@ import { randomBytes, randomInt } from "node:crypto";
 import { z } from "zod";
 import { q, one, log } from "./db";
 import { HttpError } from "./http";
-import { queueForBooking, flushOutbox } from "./messages";
+import { queueForBooking, sendSoon } from "./messages";
 import { cardTakes } from "./cardConfig";
 import { CURRENCIES } from "@/lib/data";
 import { raceDayAge, suggested } from "@/lib/format";
@@ -168,7 +168,7 @@ export async function createBooking(input: BookingInput) {
       const bookingId = res[0]!.booking_id;
       await log("booking", `${reference} booked: ${people.length} ${people.length === 1 ? "entry" : "entries"}, ${input.payMethod}, ${input.currency} ${total}.`, { bookingId });
       await queueForBooking(bookingId, "pending").catch((e) => console.error("queue pending", e));
-      await flushOutbox(5, bookingId).catch(() => {});
+      sendSoon(bookingId);
       return { reference, key: accessKey, total, currency: input.currency };
     } catch (e) {
       if (String((e as Error).message).includes("bookings_reference_key")) continue;
@@ -313,6 +313,6 @@ export async function confirmBooking(bookingId: string, receiptId: string | null
   const people = await participantsOf(bookingId);
   const virtualOnly = people.length > 0 && (await q<{ n: number }>("select count(*)::int as n from participants p join events e on e.id = p.event_id where p.booking_id = $1 and e.kind = 'in-person'", [bookingId]))[0]!.n === 0;
   await queueForBooking(bookingId, virtualOnly ? "confirm-virtual" : "confirm").catch((e) => console.error("queue confirm", e));
-  await flushOutbox(5, bookingId).catch(() => {});
+  sendSoon(bookingId);
   return { booking: b, bibs: rows };
 }

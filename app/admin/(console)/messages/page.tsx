@@ -13,7 +13,15 @@ import { cn } from "@/lib/cn";
 
 type Template = { id: string; name: string; when_label: string; body: string; enabled: boolean };
 type Log = { id: number; to_addr: string; template: string; subject: string | null; status: string; error: string | null; created_at: string; sent_at: string | null; reference: string | null };
-type Outbox = { log: Log[]; counts: { queued: number; sent: number; failed: number } | null; providers: { email: boolean; emailKey: boolean } };
+type Outbox = { log: Log[]; counts: { queued: number; sent: number; failed: number } | null; providers: { email: boolean; emailKey: boolean }; emailError: { message: string; at: string } | null };
+
+/** Resend's refusal in plain words, with what to do about it. */
+function explain(message: string) {
+  if (/domain is not verified|verify a domain|testing emails to your own/i.test(message)) return "Resend will not send until NRIF's domain is verified in Resend (Domains → Add domain, then add its DNS records).";
+  if (/401|api key/i.test(message)) return "Resend did not accept the API key.";
+  if (/429/.test(message)) return "Resend asked us to slow down for a moment.";
+  return message;
+}
 
 // Sample values so the preview reads like a real email.
 const SAMPLE: Record<string, string> = { first: "Fatoumata", event: "5 km Run", bib: "4047", bibs: "4047, 7012, 7013", start: "07:30", link: "run4independence.nrif.gm/b/7Q4K-a8Kd2f3x", hold: "Sun 25 Jan, 23:59", amount: "GMD 300", ref: "RFI-7Q4K" };
@@ -62,26 +70,34 @@ export default function AdminMessages() {
         }
       />
 
-      {p && (
-        <div className={cn("mb-2 flex items-start gap-3 rounded-2xl p-4 text-sm text-navy ring-1", p.email ? "bg-forest-50 ring-forest/15" : "bg-cobalt-50 ring-cobalt/15")}>
-          {p.email ? <CheckCircle weight="fill" className="mt-0.5 size-5 shrink-0 text-forest" /> : <Info weight="fill" className="mt-0.5 size-5 shrink-0 text-cobalt" />}
-          <span>
-            {p.email ? (
-              <>
-                <b>Email is connected.</b> Emails go out as soon as they are queued. Texts are off: everything goes by email.
-              </>
-            ) : p.emailKey ? (
-              <>
-                <b>Resend is connected, but no sending address is set yet.</b> Emails go out once NRIF&apos;s domain is verified in Resend and the sending address is added. {queued} {queued === 1 ? "email is" : "emails are"} waiting until then.
-              </>
-            ) : (
-              <>
-                <b>Email is not connected yet.</b> {queued} {queued === 1 ? "email is" : "emails are"} waiting and go out once it is. Participants still see everything on screen and in My entry. Texts are off: everything goes by email.
-              </>
-            )}
-          </span>
-        </div>
-      )}
+      {p && (() => {
+        const blocked = p.email && m.data?.emailError;
+        const ok = p.email && !blocked;
+        return (
+          <div className={cn("mb-2 flex items-start gap-3 rounded-2xl p-4 text-sm text-navy ring-1", ok ? "bg-forest-50 ring-forest/15" : blocked ? "bg-ember-50 ring-ember/20" : "bg-cobalt-50 ring-cobalt/15")}>
+            {ok ? <CheckCircle weight="fill" className="mt-0.5 size-5 shrink-0 text-forest" /> : blocked ? <WarningCircle weight="fill" className="mt-0.5 size-5 shrink-0 text-ember" /> : <Info weight="fill" className="mt-0.5 size-5 shrink-0 text-cobalt" />}
+            <span>
+              {ok ? (
+                <>
+                  <b>Email is on.</b> Each email goes out by itself as soon as it is due: the reference when someone books, the confirmation when a payment is confirmed, reminders, and the race-week emails.
+                </>
+              ) : blocked ? (
+                <>
+                  <b>Emails are switched on but cannot go out yet.</b> {explain(m.data!.emailError!.message)} {queued} {queued === 1 ? "email is" : "emails are"} waiting, and they go out by themselves once it is fixed.
+                </>
+              ) : p.emailKey ? (
+                <>
+                  <b>Resend is connected, but no sending address is set yet.</b> {queued} {queued === 1 ? "email is" : "emails are"} waiting until then.
+                </>
+              ) : (
+                <>
+                  <b>Email is not connected yet.</b> {queued} {queued === 1 ? "email is" : "emails are"} waiting and go out once it is. Participants still see everything on screen and in My entry.
+                </>
+              )}
+            </span>
+          </div>
+        );
+      })()}
 
       <Toolbar>
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3">

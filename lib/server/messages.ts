@@ -1,4 +1,5 @@
 import "server-only";
+import { after } from "next/server";
 import { q, one, settings } from "./db";
 import { COUNTRY_CODES, money } from "@/lib/format";
 import { emailFooter, render, subjectFor } from "@/lib/messages";
@@ -106,18 +107,28 @@ async function sendEmail(to: string, subject: string, text: string, replyTo: str
   throw new Error(msg);
 }
 
+/** Why emails could not go out last time (Resend's own words), or "" once one goes out. Shown in Admin → Messages. */
+const EMAIL_ERROR = "email_error";
+async function noteProviderError(message: string) {
+  await q("insert into settings (key, value) values ($1, $2) on conflict (key) do update set value = excluded.value, updated_at = now()", [EMAIL_ERROR, message.slice(0, 400)]);
+}
+export async function emailError() {
+  const row = await one<{ value: string; updated_at: string }>("select value, updated_at from settings where key = $1 and value <> ''", [EMAIL_ERROR]);
+  return row ? { message: row.value, at: row.updated_at } : null;
+}
+
 /**
- * Sends what it can, oldest first; with bookingId, only that booking's emails (so a confirmation goes out at once
- * without waiting behind a backlog). Resend takes about 2 requests a second, so sends are spaced. If the account itself
- * is the problem (see ProviderError), it stops and the emails stay queued for the next try instead of being marked failed.
- * Replies go to NRIF's contact email from Settings.
+ * Sends what it can. With bookingId, that booking's emails go first and the oldest of the backlog follows, so a
+ * confirmation never waits behind older emails and the backlog still drains. Resend takes about 2 requests a second,
+ * so sends are spaced. If the account itself is the problem (see ProviderError), it stops and the emails stay queued for
+ * the next try instead of being marked failed. Replies go to NRIF's contact email from Settings.
  */
 export async function flushOutbox(limit = 25, bookingId?: string) {
   if (!providers().email) return { sent: 0 };
   const rows = await q<{ id: number; to_addr: string; subject: string | null; body: string }>(
     `select id, to_addr, subject, body from messages
-      where status = 'queued' and channel = 'email' and ($2::uuid is null or booking_id = $2::uuid)
-      order by id limit $1`,
+      where status = 'queued' and channel = 'email'
+      order by (booking_id is not distinct from $2::uuid) desc, id limit $1`,
     [limit, bookingId ?? null],
   );
   if (!rows.length) return { sent: 0 };
@@ -134,10 +145,21 @@ export async function flushOutbox(limit = 25, bookingId?: string) {
       if (e instanceof ProviderError) {
         error = e.message;
         console.error("email provider", e.message);
+        await noteProviderError(e.message).catch(() => {});
         break;
       }
       await q("update messages set status = 'failed', error = $2 where id = $1", [m.id, String((e as Error).message).slice(0, 300)]);
     }
   }
+  if (sent) await q("update settings set value = '', updated_at = now() where key = $1 and value <> ''", [EMAIL_ERROR]).catch(() => {});
   return { sent, ...(error ? { error } : {}) };
+}
+
+/**
+ * The automatic path: called wherever an email is queued (a booking, a confirmation, a reminder). It sends after the
+ * response has gone back, so nobody waits for the email provider; that booking's emails go first, then up to a dozen
+ * older ones. The daily job sends whatever is still waiting.
+ */
+export function sendSoon(bookingId?: string) {
+  after(() => flushOutbox(12, bookingId).then(() => undefined, (e) => console.error("send soon", e)));
 }

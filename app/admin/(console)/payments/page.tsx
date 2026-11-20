@@ -121,7 +121,7 @@ export default function Payments() {
     setReminding(r.id);
     try {
       const res = await api<{ emailed: boolean }>(`/api/admin/bookings/${r.id}`, { json: { action: "remind" } });
-      toast.success(`Reminder for ${r.reference}`, { description: res.emailed ? `Emailed to ${r.email}.` : "Queued. It goes out once an email provider is connected (see Messages)." });
+      toast.success(`Reminder for ${r.reference}`, { description: res.emailed ? `On its way to ${r.email}.` : "Queued. It goes out once email is set up (see Messages)." });
       adminChanged();
     } catch (e) {
       toast.error((e as Error).message);
