@@ -13,11 +13,13 @@ import { cn } from "@/lib/cn";
 
 type Template = { id: string; name: string; when_label: string; body: string; enabled: boolean };
 type Log = { id: number; to_addr: string; template: string; subject: string | null; status: string; error: string | null; created_at: string; sent_at: string | null; reference: string | null };
-type Outbox = { log: Log[]; counts: { queued: number; sent: number; failed: number } | null; providers: { email: boolean; emailKey: boolean }; emailError: { message: string; at: string } | null };
+type Outbox = { log: Log[]; counts: { queued: number; sent: number; failed: number } | null; providers: { email: boolean; emailKey: boolean; via: "smtp" | "resend" | null }; emailError: { message: string; at: string } | null };
 
 /** Resend's refusal in plain words, with what to do about it. */
 function explain(message: string) {
   if (/domain is not verified|verify a domain|testing emails to your own/i.test(message)) return "Resend will not send until NRIF's domain is verified in Resend (Domains → Add domain, then add its DNS records).";
+  if (/EAUTH|535|Username and Password not accepted|Application-specific password/i.test(message)) return "The Gmail account refused the sign-in: check the address and the app password.";
+  if (/daily user sending limit/i.test(message)) return "Gmail's daily sending limit is reached; the rest go out tomorrow.";
   if (/401|api key/i.test(message)) return "Resend did not accept the API key.";
   if (/429/.test(message)) return "Resend asked us to slow down for a moment.";
   return message;

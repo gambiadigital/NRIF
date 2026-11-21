@@ -1,13 +1,21 @@
 import "server-only";
 import { after } from "next/server";
+import nodemailer, { type Transporter } from "nodemailer";
 import { q, one, settings } from "./db";
 import { COUNTRY_CODES, money } from "@/lib/format";
 import { emailFooter, render, subjectFor } from "@/lib/messages";
 
 /*
- * Emails go through an outbox table. Rendering and queueing always happen; sending happens only when the email
- * provider (Resend) is configured. Until then messages wait as "queued" and the admin console shows them, so nothing is
- * lost. Texts (SMS) were dropped on 2026-11-19: participants hear from NRIF by email only.
+ * Emails go through an outbox table. Rendering and queueing always happen; sending happens once a way to send is
+ * configured. Until then messages wait as "queued" and the admin console shows them, so nothing is lost. Texts (SMS)
+ * were dropped on 2026-11-19: participants hear from NRIF by email only.
+ *
+ * Two ways to send, the first one configured wins:
+ *  - SMTP, no domain needed: GMAIL_USER + GMAIL_APP_PASSWORD (a Gmail account with 2-step verification and an app
+ *    password; Gmail allows about 500 emails a day), or any server as SMTP_URL (smtps://user:pass@host:465). The
+ *    sender is EMAIL_FROM_NAME (default "Run for Independence") <the account's address, or SMTP_FROM>.
+ *  - Resend: RESEND_API_KEY + EMAIL_FROM, which must be on a domain verified in Resend (its default sender only
+ *    reaches the Resend account owner).
  */
 
 export { render };
@@ -69,9 +77,22 @@ export async function queueForBooking(bookingId: string, templateId: string) {
   ]);
 }
 
+type Smtp = { url: string; from: string };
+function smtp(): Smtp | null {
+  const name = (process.env.EMAIL_FROM_NAME || "Run for Independence").replace(/"/g, "");
+  const user = process.env.GMAIL_USER?.trim();
+  const pass = process.env.GMAIL_APP_PASSWORD?.replace(/\s+/g, "");
+  if (user && pass) return { url: `smtps://${encodeURIComponent(user)}:${encodeURIComponent(pass)}@smtp.gmail.com:465`, from: `"${name}" <${user}>` };
+  const url = process.env.SMTP_URL?.trim();
+  if (!url) return null;
+  const addr = process.env.SMTP_FROM?.trim() || decodeURIComponent(new URL(url).username);
+  return { url, from: `"${name}" <${addr}>` };
+}
+const resendOn = () => !!(process.env.RESEND_API_KEY && process.env.EMAIL_FROM);
+
 /** email: emails can go out. emailKey: the Resend key is in, but EMAIL_FROM (a verified sender) may still be missing. */
 export function providers() {
-  return { email: !!(process.env.RESEND_API_KEY && process.env.EMAIL_FROM), emailKey: !!process.env.RESEND_API_KEY };
+  return { email: !!smtp() || resendOn(), emailKey: !!process.env.RESEND_API_KEY, via: smtp() ? "smtp" : resendOn() ? "resend" : null };
 }
 
 /** A problem with the account (key, unverified sender domain, rate limit, outage), not with one email: stop, keep the rest queued. */
@@ -94,7 +115,28 @@ function emailHtml(text: string) {
 ${paras}</div></div></body></html>`;
 }
 
+let transport: { url: string; t: Transporter } | null = null;
+
+/** SMTP: a login or connection problem, or the server asking us to slow down, is the account's problem (keep queued). */
+async function sendSmtp(cfg: Smtp, to: string, subject: string, text: string, replyTo: string | undefined) {
+  if (transport?.url !== cfg.url) transport = { url: cfg.url, t: nodemailer.createTransport(cfg.url, { connectionTimeout: 15_000, socketTimeout: 20_000 }) };
+  try {
+    await transport.t.sendMail({ from: cfg.from, to, subject, text, html: emailHtml(text), ...(replyTo ? { replyTo } : {}) });
+  } catch (e) {
+    const err = e as Error & { code?: string; responseCode?: number };
+    const msg = `Email ${err.responseCode ?? err.code ?? "error"}: ${err.message}`.slice(0, 300);
+    const account = ["EAUTH", "ECONNECTION", "ETIMEDOUT", "ESOCKET", "EDNS", "ETLS"].includes(err.code ?? "") || (err.responseCode ?? 0) === 421 || (err.responseCode ?? 0) === 454 || /daily user sending limit|rate limit/i.test(err.message);
+    if (account) {
+      transport = null;
+      throw new ProviderError(msg);
+    }
+    throw new Error(msg);
+  }
+}
+
 async function sendEmail(to: string, subject: string, text: string, replyTo: string | undefined) {
+  const cfg = smtp();
+  if (cfg) return sendSmtp(cfg, to, subject, text, replyTo);
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json" },
