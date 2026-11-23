@@ -108,7 +108,8 @@ export function Hero() {
               <span className="font-label text-white/90">NRIF Endowment Fund Run · {RUN.edition}</span>
             </motion.div>
             <h1 className="font-race text-[min(14.4vw,3.6rem)] text-white sm:text-[clamp(3.5rem,11.4vw,11rem)]">
-              {["Run for", "Independence"].map((l, i) => (
+              {/* The run's name as NRIF writes it: Run 4 Independence, with the number. */}
+              {["Run 4", "Independence"].map((l, i) => (
                 <span key={l} className="block overflow-hidden pb-[0.04em] pr-[0.1em]">
                   <motion.span className="block" initial={{ y: "108%" }} animate={{ y: "0%" }} transition={{ duration: 1.1, delay: 0.35 + i * 0.1, ease: EASE }}>
                     {l}
