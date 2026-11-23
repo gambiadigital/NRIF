@@ -4,6 +4,7 @@ import nodemailer, { type Transporter } from "nodemailer";
 import { q, one, settings } from "./db";
 import { COUNTRY_CODES, money } from "@/lib/format";
 import { emailFooter, render, subjectFor } from "@/lib/messages";
+import { emailHtml, type EmailData, type EmailPerson } from "./emailHtml";
 
 /*
  * Emails go through an outbox table. Rendering and queueing always happen; sending happens once a way to send is
@@ -40,14 +41,17 @@ export async function varsFor(bookingId: string) {
     [bookingId],
   );
   if (!b) return null;
-  const people = await q<{ full_name: string; bib: string | null; name: string; start_time: string }>(
-    "select p.full_name, p.bib, e.name, e.start_time from participants p join events e on e.id = p.event_id where p.booking_id = $1 order by p.position",
+  const people = await q<{ full_name: string; bib: string | null; name: string; start_time: string; kind: string }>(
+    "select p.full_name, p.bib, e.name, e.start_time, e.kind from participants p join events e on e.id = p.event_id where p.booking_id = $1 order by p.position",
     [bookingId],
   );
   const lead = people[0];
   const hold = new Date(b.hold_until).toLocaleString("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
+  const url = shortLink(b.reference, b.access_key);
   return {
     b,
+    url,
+    people: people.map((p): EmailPerson => ({ name: p.full_name, bib: p.bib, event: p.name, kind: p.kind, start: p.start_time })),
     vars: {
       first: lead?.full_name.split(/\s+/)[0] ?? "runner",
       event: lead?.name ?? "",
@@ -98,30 +102,52 @@ export function providers() {
 /** A problem with the account (key, unverified sender domain, rate limit, outage), not with one email: stop, keep the rest queued. */
 class ProviderError extends Error {}
 
-const esc = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+/** What one email is made of when it goes out: the words, and the designed HTML when it belongs to a booking. */
+type Outgoing = { subject: string; text: string; html: string };
 
-/** The same words as the plain text, in a simple branded layout. Links become links; nothing else is added. */
-function emailHtml(text: string) {
-  const paras = esc(text)
-    .split(/\n{2,}/)
-    .map((p) => p.replace(/\n/g, "<br>").replace(/https?:\/\/[^\s<]+/g, (u) => `<a href="${u}" style="color:#135f40;font-weight:600">${u.replace(/^https?:\/\//, "")}</a>`))
-    .map((p) => `<p style="margin:0 0 16px">${p}</p>`)
-    .join("");
-  return `<!doctype html><html><body style="margin:0;background:#f3f2ee;font-family:Arial,Helvetica,sans-serif;color:#0b1b3a">
-<div style="max-width:560px;margin:0 auto;padding:24px 16px">
-<div style="height:6px;border-radius:6px 6px 0 0;background:linear-gradient(90deg,#d7141a 0 33%,#1f3c99 33% 66%,#135f40 66%)"></div>
-<div style="background:#ffffff;border-radius:0 0 16px 16px;padding:28px 24px;font-size:15px;line-height:1.55">
-<p style="margin:0 0 18px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#5d6577;font-weight:700">Run for Independence 2027</p>
-${paras}</div></div></body></html>`;
+/** The site's contact details, for the email footer. */
+async function contactDetails() {
+  const s = await settings(["contact_email", "contact_phone", "contact_whatsapp"]);
+  return { email: s.contact_email?.trim() || undefined, phone: s.contact_phone?.trim() || undefined, whatsapp: s.contact_whatsapp?.trim() || undefined };
+}
+
+/**
+ * Builds a booking's email from its template and the booking as it is now, so a delayed or resent email never shows
+ * an old hold date or a missing bib. Returns null when the booking or template is gone.
+ */
+export async function composeForBooking(bookingId: string, templateId: string, contact?: EmailData["contact"]): Promise<Outgoing | null> {
+  const [t, ctx] = await Promise.all([one<{ body: string }>("select body from templates where id = $1", [templateId]), varsFor(bookingId)]);
+  if (!t || !ctx) return null;
+  const words = render(t.body, ctx.vars);
+  return {
+    subject: subjectFor(templateId, ctx.vars),
+    text: `${words}\n\n${emailFooter(ctx.vars.link!)}`,
+    html: emailHtml({ templateId, text: words, vars: ctx.vars, people: ctx.people, link: ctx.url, site: siteUrl(), contact: contact ?? (await contactDetails()) }),
+  };
+}
+
+/** The designed email for any data (the admin preview and test sends use sample bookings). */
+export async function composeSample(templateId: string, body: string, vars: Record<string, string>, people: EmailPerson[], link: string): Promise<Outgoing> {
+  const words = render(body, vars);
+  return {
+    subject: subjectFor(templateId, vars),
+    text: `${words}\n\n${emailFooter(link.replace(/^https?:\/\//, ""))}`,
+    html: emailHtml({ templateId, text: words, vars, people, link, site: siteUrl(), contact: await contactDetails() }),
+  };
+}
+
+/** A plain email with no booking behind it: the same frame, no booking panel. */
+function plainHtml(text: string, contact: EmailData["contact"]) {
+  return emailHtml({ templateId: "plain", text, vars: {}, people: [], link: siteUrl(), site: siteUrl(), contact });
 }
 
 let transport: { url: string; t: Transporter } | null = null;
 
 /** SMTP: a login or connection problem, or the server asking us to slow down, is the account's problem (keep queued). */
-async function sendSmtp(cfg: Smtp, to: string, subject: string, text: string, replyTo: string | undefined) {
+async function sendSmtp(cfg: Smtp, to: string, { subject, text, html }: Outgoing, replyTo: string | undefined) {
   if (transport?.url !== cfg.url) transport = { url: cfg.url, t: nodemailer.createTransport(cfg.url, { connectionTimeout: 15_000, socketTimeout: 20_000 }) };
   try {
-    await transport.t.sendMail({ from: cfg.from, to, subject, text, html: emailHtml(text), ...(replyTo ? { replyTo } : {}) });
+    await transport.t.sendMail({ from: cfg.from, to, subject, text, html, ...(replyTo ? { replyTo } : {}) });
   } catch (e) {
     const err = e as Error & { code?: string; responseCode?: number };
     const msg = `Email ${err.responseCode ?? err.code ?? "error"}: ${err.message}`.slice(0, 300);
@@ -134,13 +160,14 @@ async function sendSmtp(cfg: Smtp, to: string, subject: string, text: string, re
   }
 }
 
-async function sendEmail(to: string, subject: string, text: string, replyTo: string | undefined) {
+export async function sendEmail(to: string, mail: Outgoing, replyTo: string | undefined) {
+  const { subject, text, html } = mail;
   const cfg = smtp();
-  if (cfg) return sendSmtp(cfg, to, subject, text, replyTo);
+  if (cfg) return sendSmtp(cfg, to, mail, replyTo);
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ from: process.env.EMAIL_FROM, to, subject, text, html: emailHtml(text), ...(replyTo ? { reply_to: replyTo } : {}) }),
+    body: JSON.stringify({ from: process.env.EMAIL_FROM, to, subject, text, html, ...(replyTo ? { reply_to: replyTo } : {}) }),
     signal: AbortSignal.timeout(15_000),
   });
   if (res.ok) return;
@@ -167,21 +194,24 @@ export async function emailError() {
  */
 export async function flushOutbox(limit = 25, bookingId?: string) {
   if (!providers().email) return { sent: 0 };
-  const rows = await q<{ id: number; to_addr: string; subject: string | null; body: string }>(
-    `select id, to_addr, subject, body from messages
+  const rows = await q<{ id: number; booking_id: string | null; template: string; to_addr: string; subject: string | null; body: string }>(
+    `select id, booking_id, template, to_addr, subject, body from messages
       where status = 'queued' and channel = 'email'
       order by (booking_id is not distinct from $2::uuid) desc, id limit $1`,
     [limit, bookingId ?? null],
   );
   if (!rows.length) return { sent: 0 };
-  const replyTo = (await settings(["contact_email"])).contact_email?.trim() || undefined;
+  const contact = await contactDetails();
+  const replyTo = contact.email;
   let sent = 0;
   let error: string | undefined;
   for (const [i, m] of rows.entries()) {
     if (i > 0) await new Promise((r) => setTimeout(r, 550));
     try {
-      await sendEmail(m.to_addr, m.subject ?? "Run for Independence", m.body, replyTo);
-      await q("update messages set status = 'sent', sent_at = now(), error = null where id = $1", [m.id]);
+      const mail = (m.booking_id ? await composeForBooking(m.booking_id, m.template, contact) : null) ?? { subject: m.subject ?? "Run for Independence", text: m.body, html: plainHtml(m.body, contact) };
+      await sendEmail(m.to_addr, mail, replyTo);
+      // Keep what actually went out, so the outbox shows the real subject and words.
+      await q("update messages set status = 'sent', sent_at = now(), error = null, subject = $2, body = $3 where id = $1", [m.id, mail.subject, mail.text]);
       sent++;
     } catch (e) {
       if (e instanceof ProviderError) {

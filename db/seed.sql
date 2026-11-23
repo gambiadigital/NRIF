@@ -13,20 +13,34 @@ insert into teams (code, name, kind) values
 on conflict (code) do nothing;
 
 insert into templates (id, name, channel, when_label, body) values
-  ('pending',  'Reference code',       'email', 'When a booking is made',
-   'Run for Independence: your place is held until {hold}. Pay {amount} with reference {ref}. Details: {link}'),
-  ('confirm',  'Confirmation',         'email', 'When a payment is confirmed',
-   'Run for Independence: You''re in, {first}. {event}, bib {bib}. Sat 30 Jan, gates 06:30, {start} start, Independence Stadium. {link}'),
+  ('pending', 'Reference code', 'email', 'When a booking is made',
+   E'Thank you for signing up for Run for Independence, {first}. Your place is held until {hold}.
+
+To confirm it, pay {amount} and quote your reference {ref} with the payment. Your bib number arrives by email as soon as NRIF confirms it.'),
+  ('confirm', 'Confirmation', 'email', 'When a payment is confirmed',
+   E'Your payment is confirmed and your place is yours, {first}. Thank you for running for research and innovation in The Gambia.
+
+Keep this email: it has your bib number and everything you need for race day.'),
   ('confirm-virtual', 'Virtual confirmation', 'email', 'When a virtual entry is paid',
-   'Run for Independence: You''re in, {first}. {event}, e-bib {bib}. Run 5 or 10 km any day 23-31 Jan, upload by 2 Feb: {link}'),
-  ('reminder3', 'Pending reminder',    'email', 'Day 3 of a 5-day hold',
-   'Your Run for Independence place is held until {hold}. Pay {amount} with reference {ref}. Already paid? Ignore this.'),
-  ('race-7',   '7 days to go',         'email', 'Sat 23 Jan, 09:00',
-   '7 days to go, {first}. Sat 30 Jan at Independence Stadium: gates 06:30, start 07:30. Bibs {bibs}. Latest plan: {link}'),
-  ('race-1',   'Tomorrow',             'email', 'Fri 29 Jan, 18:00',
-   'Tomorrow. Gates open 06:30, {event} starts {start}. Bring water and your bib. See you at Independence Stadium.'),
+   E'Your payment is confirmed and your e-bib is ready, {first}.
+
+Run 5 or 10 km wherever you are, on any day from 23 to 31 January, then upload a screenshot or link from your running app by 2 February to get your e-certificate.'),
+  ('reminder3', 'Pending reminder', 'email', 'Day 3 of a 5-day hold',
+   E'Hi {first}, your place in Run for Independence is held until {hold}, but we have not seen your payment yet.
+
+Pay {amount} and quote your reference {ref} to keep it. Already paid? Thank you, there is nothing more to do: NRIF will confirm it shortly.'),
+  ('race-7', '7 days to go', 'email', 'Sat 23 Jan, 09:00',
+   E'Seven days to go, {first}! Here is everything you need for Saturday at Independence Stadium.
+
+Arrive early: gates open at 06:30 and the start is at 07:30.'),
+  ('race-1', 'Tomorrow', 'email', 'Fri 29 Jan, 18:00',
+   E'Tomorrow is race day, {first}. Gates open at 06:30 and your {event} starts at {start}.
+
+Bring water, wear something comfortable and arrive early. See you at Independence Stadium!'),
   ('virtual-open', 'Run window opens', 'email', 'Sat 23 Jan, 07:00',
-   'The run window is open, {first}. Run your {event} any day to 31 Jan and upload a screenshot or link: {link}')
+   E'The run window is open, {first}! Run your {event} on any day until 31 January.
+
+Then upload a screenshot or link from your running app by 2 February to get your e-certificate.')
 on conflict (id) do nothing;
 
 insert into settings (key, value) values

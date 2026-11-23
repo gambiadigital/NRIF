@@ -4,12 +4,12 @@
  */
 
 export const SUBJECTS: Record<string, string> = {
-  pending: "Your reference {ref}: Run for Independence",
-  confirm: "You're in: {event}, bib {bib}",
-  "confirm-virtual": "You're in: {event}, e-bib {bib}",
-  reminder3: "Your place is held until {hold}",
+  pending: "Your place is held: reference {ref}",
+  reminder3: "Reminder: your place is held until {hold}",
+  confirm: "You're in! {event}, bib {bib}",
+  "confirm-virtual": "You're in! {event}, e-bib {bib}",
   "race-7": "7 days to go: Run for Independence",
-  "race-1": "Tomorrow: Run for Independence",
+  "race-1": "Tomorrow: gates open at 06:30",
   "virtual-open": "Your run window is open",
 };
 

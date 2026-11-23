@@ -1,14 +1,14 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { EnvelopeSimple, Clock, CheckCircle, PaperPlaneTilt, WarningCircle, HourglassMedium, Info, CircleNotch, ArrowCounterClockwise } from "@phosphor-icons/react";
-import { AdminTitle, Panel, Empty, SearchBox, Tabs, Toolbar } from "@/components/admin/Shell";
+import { EnvelopeSimple, Clock, CheckCircle, PaperPlaneTilt, WarningCircle, HourglassMedium, Info, CircleNotch, ArrowCounterClockwise, DeviceMobile, Desktop } from "@phosphor-icons/react";
+import { AdminTitle, Panel, Empty, SearchBox, Tabs, Toolbar, type Me } from "@/components/admin/Shell";
 import { Badge, Switch } from "@/components/ui/fields";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/client";
 import { useAdmin, when } from "@/lib/admin-client";
-import { emailFooter, render, subjectFor } from "@/lib/messages";
+import { subjectFor } from "@/lib/messages";
 import { cn } from "@/lib/cn";
 
 type Template = { id: string; name: string; when_label: string; body: string; enabled: boolean };
@@ -256,23 +256,91 @@ function Templates({ list, reload }: { list: Template[] | null; reload: () => Pr
             )}
           </div>
 
-          <p className="mt-6 font-label text-muted">Preview</p>
-          <div className="mt-2 overflow-hidden rounded-2xl border border-line">
-            <div className="space-y-1 border-b border-line bg-paper px-4 py-3 text-sm">
-              <p className="truncate">
-                <span className="inline-block w-16 text-muted">To</span>
-                <span className="text-navy">fatoumata@example.com</span>
-              </p>
-              <p className="truncate">
-                <span className="inline-block w-16 text-muted">Subject</span>
-                <b className="text-navy">{subjectFor(cur.id, SAMPLE)}</b>
-              </p>
-            </div>
-            <div className="h-1.5 flag-rule" />
-            <div className="whitespace-pre-line break-words bg-white px-4 py-4 text-sm leading-relaxed text-navy">{`${render(body, SAMPLE)}\n\n${emailFooter(SAMPLE.link!)}`}</div>
-          </div>
+          <EmailPreview id={cur.id} body={body} subject={subjectFor(cur.id, SAMPLE)} />
         </Panel>
       )}
+    </div>
+  );
+}
+
+/**
+ * The real email, exactly as participants get it (rendered by the server from a sample booking), in a phone or
+ * desktop frame. It follows the words being typed after a short pause, and can be sent to an inbox to check it there.
+ */
+function EmailPreview({ id, body, subject }: { id: string; body: string; subject: string }) {
+  const me = useAdmin<Me>("/api/admin/me").data;
+  const [size, setSize] = useState<"desktop" | "phone">("desktop");
+  const [words, setWords] = useState(body);
+  const [height, setHeight] = useState(900);
+  const [to, setTo] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
+  const frame = useRef<HTMLIFrameElement>(null);
+  useEffect(() => {
+    const t = setTimeout(() => setWords(body), 450);
+    return () => clearTimeout(t);
+  }, [body]);
+  const src = `/api/admin/templates/preview?id=${encodeURIComponent(id)}&body=${encodeURIComponent(words)}`;
+  const address = to ?? me?.email ?? "";
+
+  async function sendSample() {
+    setSending(true);
+    try {
+      await api("/api/admin/templates/preview", { json: { id, to: address, body } });
+      toast.success("Sample sent", { description: `Check ${address} in a minute. Its subject starts with [Sample].` });
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <div className="mt-7">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="font-label text-muted">Preview</p>
+        <Tabs
+          value={size}
+          onChange={setSize}
+          tabs={[
+            { v: "desktop", l: "Desktop" },
+            { v: "phone", l: "Phone" },
+          ]}
+        />
+      </div>
+      <div className="mt-3 overflow-hidden rounded-2xl border border-line bg-[#f3f2ee]">
+        <div className="flex items-center gap-2 border-b border-line bg-white px-4 py-3 text-sm">
+          {size === "phone" ? <DeviceMobile weight="bold" className="size-4 shrink-0 text-muted" /> : <Desktop weight="bold" className="size-4 shrink-0 text-muted" />}
+          <span className="shrink-0 text-muted">Subject</span>
+          <b className="min-w-0 truncate text-navy">{subject}</b>
+        </div>
+        <div className={cn("mx-auto transition-[max-width] duration-300", size === "phone" ? "max-w-[390px] py-4" : "max-w-full")}>
+          <iframe
+            ref={frame}
+            key={src}
+            src={src}
+            title="Email preview"
+            onLoad={() => {
+              const doc = frame.current?.contentDocument;
+              if (doc) setHeight(Math.max(400, doc.documentElement.scrollHeight));
+            }}
+            style={{ height }}
+            className={cn("block w-full bg-[#f3f2ee]", size === "phone" && "rounded-[1.5rem] border-[6px] border-navy")}
+          />
+        </div>
+      </div>
+      <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+        <input
+          type="email"
+          value={address}
+          onChange={(e) => setTo(e.target.value)}
+          placeholder="you@example.com"
+          aria-label="Send a sample to"
+          className="h-11 min-w-0 flex-1 rounded-full border border-line bg-white px-4 text-[0.9375rem] text-navy outline-none focus:border-forest"
+        />
+        <Button variant="line" disabled={sending || !/^\S+@\S+\.\S+$/.test(address)} icon={sending ? <CircleNotch weight="bold" className="size-4 animate-spin" /> : <PaperPlaneTilt weight="fill" className="size-4" />} onClick={sendSample}>
+          {sending ? "Sending…" : "Send me a sample"}
+        </Button>
+      </div>
     </div>
   );
 }
