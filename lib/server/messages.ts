@@ -3,6 +3,9 @@ import { after } from "next/server";
 import nodemailer, { type Transporter } from "nodemailer";
 import { q, one, settings } from "./db";
 import { COUNTRY_CODES, money } from "@/lib/format";
+import { PAYMENT_METHODS } from "@/lib/data";
+
+const METHOD_NAMES: Record<string, string> = Object.fromEntries(Object.values(PAYMENT_METHODS).map((m) => [m.id, m.name]));
 import { emailFooter, render, subjectFor } from "@/lib/messages";
 import { emailHtml, type EmailData, type EmailPerson } from "./emailHtml";
 
@@ -36,8 +39,8 @@ export function e164(iso: string, digits: string) {
 }
 
 export async function varsFor(bookingId: string) {
-  const b = await one<{ reference: string; access_key: string; currency: string; total: string; hold_until: string; phone_iso: string; phone: string; email: string }>(
-    "select reference, access_key, currency, total, hold_until, phone_iso, phone, email from bookings where id = $1",
+  const b = await one<{ reference: string; access_key: string; currency: string; total: string; hold_until: string; phone_iso: string; phone: string; email: string; payer_reference: string | null; pay_method: string }>(
+    "select reference, access_key, currency, total, hold_until, phone_iso, phone, email, payer_reference, pay_method from bookings where id = $1",
     [bookingId],
   );
   if (!b) return null;
@@ -61,6 +64,8 @@ export async function varsFor(bookingId: string) {
       ref: b.reference,
       amount: money(Number(b.total), b.currency as never, { decimals: b.currency !== "GMD" }),
       hold,
+      payref: b.payer_reference ?? "",
+      method: METHOD_NAMES[b.pay_method] ?? b.pay_method,
       link: shortLink(b.reference, b.access_key).replace(/^https?:\/\//, ""),
     } as Record<string, string>,
   };

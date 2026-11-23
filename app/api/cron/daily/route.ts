@@ -13,11 +13,14 @@ export const GET = route(async (req: Request) => {
   // Card payments the payer never came back from are settled first, so a paid booking is never released.
   const cardsPaid = await settleOpenCards().catch((e) => (console.error("card sweep", e), 0));
 
-  const released = await q<{ id: string; reference: string }>("update bookings set status = 'released' where status = 'pending' and hold_until < now() returning id, reference");
+  // Pay-first bookings (payer_reference set) are already paid for: they wait for staff, never for a hold to run out.
+  const released = await q<{ id: string; reference: string }>(
+    "update bookings set status = 'released' where status = 'pending' and hold_until < now() and payer_reference is null returning id, reference",
+  );
   for (const r of released) await log("release", `${r.reference} released: no payment within the hold.`, { bookingId: r.id });
 
   const due = await q<{ id: string }>(
-    "update bookings set reminded_at = now() where status = 'pending' and reminded_at is null and created_at < now() - interval '3 days' returning id",
+    "update bookings set reminded_at = now() where status = 'pending' and reminded_at is null and payer_claimed_at is null and created_at < now() - interval '3 days' returning id",
   );
   for (const d of due) await queueForBooking(d.id, "reminder3");
 
@@ -40,6 +43,9 @@ export const GET = route(async (req: Request) => {
     for (const r of ids) await queueForBooking(r.id, step.tpl);
     raceTexts += ids.length;
   }
+
+  // Card checkouts opened for pay-first orders and never paid: close them after two days.
+  await q("update orders set status = 'cancelled' where status = 'open' and created_at < now() - interval '2 days'");
 
   const { sent } = await flushOutbox(60);
   return json({ cardsPaid, released: released.length, reminders: due.length, raceTexts, sent });

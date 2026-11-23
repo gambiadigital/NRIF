@@ -165,6 +165,8 @@ function Pending() {
     );
   }
 
+  if (b.payerReference && b.status === "pending") return <Checking b={b} />;
+
   if (b.status === "released" || b.status === "cancelled") {
     return (
       <div className="mx-auto max-w-xl rounded-[1.75rem] border border-line bg-white p-8 text-center shadow-card">
@@ -442,6 +444,68 @@ function Pending() {
           ? `You are paying for ${b.participants.map((p) => p.firstName).join(", ")}. Their bib numbers go to them by email once NRIF confirms it.`
           : "Keep this page or the text we send. Your reference and phone number get you back in."}
       </p>
+    </div>
+  );
+}
+
+/** Registered after paying: NRIF is matching the payment. Nothing to do but wait; the page moves on when it is confirmed. */
+function Checking({ b }: { b: NonNullable<ReturnType<typeof useBookingData>["data"]> }) {
+  const amount = money(b.total, b.currency as never, { decimals: b.currency !== "GMD" });
+  const virtual = b.participants.every((p) => eventById(p.eventId).kind === "virtual");
+  return (
+    <div className="mx-auto max-w-2xl">
+      <div className="flex items-center gap-4">
+        <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-forest-50 text-forest">
+          <motion.span animate={{ rotate: [0, 180, 180, 360] }} transition={{ duration: 3.2, repeat: Infinity, times: [0, 0.35, 0.6, 1], ease: "easeInOut" }}>
+            <HourglassMedium weight="fill" className="size-7" />
+          </motion.span>
+        </span>
+        <div className="min-w-0">
+          <h1 className="font-race text-[clamp(2.2rem,7vw,2.8rem)] text-navy">You&apos;re registered</h1>
+          <p className="truncate text-muted">
+            {b.participants.map((p) => eventById(p.eventId).name).join(", ")} · {b.participants[0]?.fullName}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-6 rounded-2xl bg-forest-50 px-5 py-4 text-[0.9375rem] text-navy ring-1 ring-forest/15">
+        Thank you, {b.participants[0]?.firstName}. NRIF is checking your payment of <b>{amount}</b>. Your {virtual ? "e-bib arrives" : "bib numbers arrive"} by email as soon as it is confirmed.
+      </div>
+
+      <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="rounded-[1.5rem] border border-line bg-white p-5">
+          <p className="font-label text-muted">Your booking reference</p>
+          <p className="mt-2 font-mono text-[2rem] font-bold tracking-[0.06em] text-cobalt">{b.reference}</p>
+          <p className="mt-1 text-sm text-muted">Keep it: with your phone number it gets you back into My entry.</p>
+        </div>
+        <div className="rounded-[1.5rem] border border-line bg-white p-5">
+          <p className="font-label text-muted">Your payment reference</p>
+          <p className="mt-2 break-all font-mono text-xl font-bold text-navy">{b.payerReference}</p>
+          <p className="mt-1 text-sm text-muted">Wrong? Contact NRIF with your booking reference and the right one.</p>
+        </div>
+      </div>
+
+      <div className="mt-6 rounded-[1.5rem] border border-line bg-white p-5">
+        <ol className="space-y-4">
+          {[
+            { t: "You paid", s: `${amount} by ${PAYMENT_METHODS[b.payMethod as PaymentMethodId]?.name ?? b.payMethod}`, done: true },
+            { t: "You registered", s: `${b.participants.length} ${b.participants.length === 1 ? "person" : "people"}`, done: true },
+            { t: "NRIF confirms your payment", s: "Usually within a working day", done: false },
+            { t: `${virtual ? "E-bib" : "Bib numbers"} by email`, s: "Straight after NRIF confirms it. This page updates by itself.", done: false },
+          ].map((x) => (
+            <li key={x.t} className="flex items-start gap-3">
+              {x.done ? <CheckCircle weight="fill" className="size-6 shrink-0 text-forest" /> : <span className="mt-0.5 size-5 shrink-0 rounded-full border-2 border-line-strong" />}
+              <span>
+                <span className="block font-semibold text-navy">{x.t}</span>
+                <span className="block text-sm text-muted">{x.s}</span>
+              </span>
+            </li>
+          ))}
+        </ol>
+        <Link href="/my-entry" className="mt-5 flex h-[3.25rem] items-center justify-center rounded-full border border-line bg-white font-semibold text-navy hover:bg-paper">
+          My entry
+        </Link>
+      </div>
     </div>
   );
 }

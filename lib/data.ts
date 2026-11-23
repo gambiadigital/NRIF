@@ -217,11 +217,11 @@ export const FAQS = [
   },
   {
     q: "How do I register my children?",
-    a: "Add them to your booking as extra participants. When a date of birth is under 18, a guardian section opens and you accept the waiver for them. Under 18s can walk the Heritage Walk at any age and run the 5 km from 12.",
+    a: "Add them at the first step, under Anyone else coming, and pay for everyone together. After paying you add their names; when a date of birth is under 18, a guardian section opens and you accept the waiver for them. Under 18s can walk the Heritage Walk at any age and run the 5 km from 12.",
   },
   {
     q: "Which payment methods can I use?",
-    a: "Wave, Yonna or Ecobank in The Gambia. From abroad, send with Remitly or ACE to NRIF's Yonna or Wave number, or transfer to NRIF's Ecobank account. You get a reference code to quote with your payment, and your place is held for five days while we match it. Where Visa and Mastercard are offered, a card payment is confirmed straight away.",
+    a: "You pay first. Choose your entries, pay with Wave, Yonna, Ecobank or a Visa or Mastercard card (from abroad: Remitly or ACE, or a transfer to NRIF's Ecobank account), then type the reference from your payment receipt and add everyone's names. NRIF checks the payment and emails your bib numbers, usually within a working day. A card payment is confirmed straight away.",
   },
   {
     q: "When do I get my bib number?",

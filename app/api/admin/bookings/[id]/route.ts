@@ -41,6 +41,7 @@ export const POST = route(async (req: Request, ctx: RouteContext<"/api/admin/boo
   }
   if (action === "remind") {
     if (b.status !== "pending") throw new HttpError(409, "Only bookings waiting for payment get reminders");
+    if (b.payer_reference) throw new HttpError(409, "They paid before registering. Check the payment and confirm it instead.");
     await queueForBooking(id, "reminder3");
     await q("update bookings set reminded_at = now() where id = $1", [id]);
     await log("remind", `${admin.name} sent ${b.reference} a payment reminder.`, { actor: admin.name, bookingId: id });

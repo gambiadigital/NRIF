@@ -7,8 +7,9 @@ import { money, raceDayAge, suggested } from "./format";
 
 /*
  * The booking as the participant builds it across the five steps. One booking holds many participants and goes
- * through one payment. It lives in sessionStorage so a refresh mid-form keeps the answers; once the server has it,
- * `submitted` carries the reference and access key and the form clears.
+ * through one payment. Pay first (NRIF, 2026-11-24): step 1 picks everyone's entries, step 2 takes the payment and
+ * keeps the server's order (its reference and the token that proves it is theirs), and only then come the names and
+ * details. It lives in sessionStorage so a refresh mid-form keeps the answers; once the booking is made the form clears.
  */
 
 export type Phone = { iso: string; digits: string };
@@ -24,6 +25,17 @@ export type Participant = {
   bibName: string;
   guardianIsLead: boolean;
   guardian: { name: string; relation: string; phone: Phone };
+};
+
+/** The payment, once made: claimed with the payer's own reference, or paid by card. */
+export type PaidOrder = {
+  id: string;
+  token: string;
+  reference: string;
+  status: "claimed" | "paid";
+  method: PaymentMethodId;
+  total: number;
+  payerReference: string | null;
 };
 
 export type Booking = {
@@ -44,6 +56,7 @@ export type Booking = {
   consents: { waiver: boolean; guardian: boolean; photos: boolean; news: boolean; acceptedAt: string };
   donation: number;
   payMethod: PaymentMethodId;
+  order: PaidOrder | null;
 };
 
 const blankGuardian = () => ({ name: "", relation: "", phone: { iso: "GM", digits: "" } });
@@ -74,6 +87,7 @@ const blank = (): Booking => ({
   consents: { waiver: false, guardian: false, photos: false, news: false, acceptedAt: "" },
   donation: 0,
   payMethod: "wave",
+  order: null,
 });
 
 type Actions = {
@@ -83,6 +97,8 @@ type Actions = {
   addParticipant: (p: Participant) => void;
   removeParticipant: (id: string) => void;
   setResidence: (r: Residence) => void;
+  /** How many people other than the booker are entered in an event (step 1). */
+  setOthers: (eventId: RaceEvent["id"], n: number) => void;
   setConsent: (k: keyof Booking["consents"], v: boolean) => void;
   /** Clears the form after the server has the booking, keeping where the visitor came from. */
   reset: () => void;
@@ -116,6 +132,17 @@ export const useBooking = create<Booking & Actions>()(
           ),
         });
       },
+      setOthers: (eventId, n) => {
+        const s = get();
+        const others = s.participants.slice(1);
+        const have = others.filter((p) => p.eventId === eventId);
+        const room = 10 - s.participants.length + have.length;
+        const want = Math.max(0, Math.min(n, room));
+        let kept = 0;
+        const next = others.filter((p) => p.eventId !== eventId || ++kept <= want);
+        for (let i = have.length; i < want; i++) next.push(newParticipant(eventId));
+        set({ participants: [s.participants[0]!, ...next] });
+      },
       setConsent: (k, v) => {
         const c = { ...get().consents, [k]: v };
         if (k === "waiver" && v && !c.acceptedAt) c.acceptedAt = new Date().toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
@@ -131,8 +158,8 @@ export const useBooking = create<Booking & Actions>()(
       storage: createJSONStorage(() => sessionStorage),
       skipHydration: true,
       partialize: (s) => {
-        const { patch, patchContact, patchParticipant, addParticipant, removeParticipant, setResidence, setConsent, reset, ...rest } = s;
-        void patch; void patchContact; void patchParticipant; void addParticipant; void removeParticipant; void setResidence; void setConsent; void reset;
+        const { patch, patchContact, patchParticipant, addParticipant, removeParticipant, setResidence, setOthers, setConsent, reset, ...rest } = s;
+        void patch; void patchContact; void patchParticipant; void addParticipant; void removeParticipant; void setResidence; void setOthers; void setConsent; void reset;
         return rest;
       },
     },
@@ -147,9 +174,9 @@ export function entryPrice(b: Pick<Booking, "residence" | "currency">, eventId: 
 }
 
 export function lineItems(b: Booking) {
-  return b.participants.map((p) => ({
+  return b.participants.map((p, i) => ({
     id: p.id,
-    name: p.fullName || (p.isLead ? "You" : "New participant"),
+    name: p.fullName || (p.isLead ? "You" : `Person ${i + 1}`),
     first: (p.fullName || "You").split(" ")[0]!,
     event: eventById(p.eventId),
     amount: entryPrice(b, p.eventId),

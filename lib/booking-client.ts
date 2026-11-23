@@ -31,6 +31,8 @@ export type ClientBooking = {
   paidAt: string | null;
   claimedAt: string | null;
   payerFromTail?: string | null;
+  /** Pay-first bookings: the reference the payer gave. NRIF is checking the payment. */
+  payerReference?: string | null;
   createdAt: string;
   steps: boolean;
   stepsCode: string | null;

@@ -29,8 +29,9 @@ const SANS = "'Helvetica Neue', Helvetica, Arial, sans-serif";
 const HEAVY = "'Arial Black', 'Helvetica Neue', Arial, sans-serif";
 const MONO = "'Courier New', Courier, monospace";
 
-type Kind = "payment" | "bibs" | "virtual" | "plain";
+type Kind = "payment" | "received" | "bibs" | "virtual" | "plain";
 const DESIGN: Record<string, { kind: Kind; headline: string; button: string; hero: string }> = {
+  received: { kind: "received", headline: "We're checking your payment, {first}", button: "Open my booking", hero: "hero-held" },
   pending: { kind: "payment", headline: "Your place is held, {first}", button: "See how to pay", hero: "hero-held" },
   reminder3: { kind: "payment", headline: "Your place is still held", button: "Pay now", hero: "hero-held" },
   confirm: { kind: "bibs", headline: "You're in, {first}!", button: "Open my booking", hero: "hero-in" },
@@ -90,6 +91,25 @@ function paymentPanel(v: Record<string, string>) {
 <p style="margin:14px 0 0;font-family:${SANS};font-size:14px;line-height:1.55;color:${C.muted}">Pay with Wave, Yonna, Ecobank or a Visa or Mastercard card. Your booking page shows each way, step by step. Your bib number arrives by email as soon as NRIF confirms the payment.</p>`;
 }
 
+/** Registered after paying: our reference to keep, what they paid, and the reference they gave for the payment. */
+function receivedPanel(v: Record<string, string>) {
+  return `
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${C.paper};border:1px solid ${C.line};border-radius:16px">
+  <tr><td style="padding:22px 24px 20px">
+    ${label("Your booking reference")}
+    <p style="margin:0;font-family:${MONO};font-size:34px;line-height:1.1;font-weight:bold;letter-spacing:3px;color:${C.navy}">${esc(v.ref ?? "")}</p>
+    <p style="margin:8px 0 0;font-family:${SANS};font-size:14px;line-height:1.5;color:${C.muted}">Keep it: it is how NRIF finds your booking.</p>
+  </td></tr>
+  <tr><td style="padding:0">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+      <td class="stack" width="50%" valign="top" style="padding:16px 24px;border-top:1px solid ${C.line}">${label("You paid")}<p style="margin:0;font-family:${HEAVY};font-size:22px;line-height:1.2;color:${C.forest}">${esc(v.amount ?? "")}</p><p style="margin:4px 0 0;font-family:${SANS};font-size:13px;color:${C.muted}">by ${esc(v.method ?? "")}</p></td>
+      <td class="stack" width="50%" valign="top" style="padding:16px 24px;border-top:1px solid ${C.line}">${label("Your payment reference")}<p style="margin:0;font-family:${MONO};font-size:17px;line-height:1.3;font-weight:bold;color:${C.navy};word-break:break-all">${esc(v.payref || "—")}</p></td>
+    </tr></table>
+  </td></tr>
+</table>
+<p style="margin:14px 0 0;font-family:${SANS};font-size:14px;line-height:1.55;color:${C.muted}">Gave the wrong payment reference? Reply to this email with the right one and NRIF will sort it out.</p>`;
+}
+
 /** One "ticket" per runner: the bib number on navy, the name and event beside it. */
 function tickets(people: EmailPerson[], virtual: boolean) {
   return people
@@ -113,6 +133,7 @@ function tickets(people: EmailPerson[], virtual: boolean) {
 
 function panel(kind: Kind, d: EmailData) {
   if (kind === "payment") return paymentPanel(d.vars);
+  if (kind === "received") return receivedPanel(d.vars);
   if (kind === "bibs") {
     const people = d.people.filter((p) => p.kind !== "virtual");
     const starts = [...new Set(people.map((p) => p.start).filter((t) => /^\d/.test(t)))].join(" and ") || RUN.start;

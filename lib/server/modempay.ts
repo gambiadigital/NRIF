@@ -52,34 +52,37 @@ type Intent = {
 const unwrap = (r: Intent & { data?: Intent }) => (typeof r.status === "string" || !r.data || typeof r.data !== "object" ? r : r.data);
 
 type Booking = { id: string; reference: string; total: string | number; currency: string; status: string; email: string; phone: string | null };
+type Order = { id: string; reference: string; total: string | number; currency: string; status: string };
 
-/** Opens a Modem Pay card checkout for the whole booking. Each try is its own order, RFI-XXXX-C1, -C2 and so on. */
-export async function startCardPayment(b: Booking, opts: { back: string; site: string }) {
+/**
+ * Opens one Modem Pay card checkout for an amount, limited to cards. Each try is its own order id, RFI-XXXX-C1, -C2
+ * and so on, and belongs either to a booking (the older pay-after flow) or to a pay-first order.
+ */
+async function openCheckout(p: { reference: string; total: number; currency: string; email?: string; back: string; site: string; bookingId: string | null; payOrder: string | null }) {
   if (!cardEnabled()) throw new HttpError(503, "Card payments are not switched on yet. Choose another way to pay.");
-  if (!cardTakes(b.currency)) throw new HttpError(400, `Card payments are taken in ${cardCurrencies().join(" or ")} only. Choose another way to pay.`);
-  if (b.status !== "pending") throw new HttpError(409, "This booking is not waiting for payment");
-
-  const tries = (await one<{ n: number }>("select count(*)::int as n from card_payments where booking_id = $1", [b.id]))!.n;
-  if (tries >= 10) throw new HttpError(429, "Too many card attempts on this booking. Contact NRIF and we will help.");
-  const orderId = `${b.reference}-C${tries + 1}`;
-  const total = Number(b.total);
+  if (!cardTakes(p.currency)) throw new HttpError(400, `Card payments are taken in ${cardCurrencies().join(" or ")} only. Choose another way to pay.`);
+  const tries = (
+    await one<{ n: number }>("select count(*)::int as n from card_payments where (booking_id = $1 and $1 is not null) or (pay_order = $2 and $2 is not null)", [p.bookingId, p.payOrder])
+  )!.n;
+  if (tries >= 10) throw new HttpError(429, "Too many card attempts. Contact NRIF and we will help.");
+  const orderId = `${p.reference}-C${tries + 1}`;
 
   const created = await modem<Intent & { data?: Intent }>("POST", "/payments", {
     data: {
-      amount: total,
-      currency: b.currency,
+      amount: p.total,
+      currency: p.currency,
       title: "Run for Independence 2027",
-      description: `Booking ${b.reference}`,
-      customer_email: b.email,
+      description: `Booking ${p.reference}`,
+      ...(p.email ? { customer_email: p.email } : {}),
       payment_methods: ["card"],
-      metadata: { booking_reference: b.reference, order_id: orderId },
-      return_url: `${opts.back}&card=${encodeURIComponent(orderId)}`,
-      cancel_url: `${opts.back}&card=cancelled`,
-      // Modem Pay only calls public HTTPS addresses. On a local machine the pending page and the daily job still settle it.
-      ...(/^https:\/\/(?!localhost|127\.)/.test(opts.site) ? { callback_url: `${opts.site}/api/webhooks/modempay` } : {}),
+      metadata: { booking_reference: p.reference, order_id: orderId },
+      return_url: `${p.back}&card=${encodeURIComponent(orderId)}`,
+      cancel_url: `${p.back}&card=cancelled`,
+      // Modem Pay only calls public HTTPS addresses. On a local machine the return page and the daily job still settle it.
+      ...(/^https:\/\/(?!localhost|127\.)/.test(p.site) ? { callback_url: `${p.site}/api/webhooks/modempay` } : {}),
     },
   }).catch((e) => {
-    console.error("modempay create", b.reference, e);
+    console.error("modempay create", p.reference, e);
     throw new HttpError(502, "The card page is not available right now. Try again in a few minutes, or choose another way to pay.");
   });
   const intent = unwrap(created);
@@ -88,23 +91,36 @@ export async function startCardPayment(b: Booking, opts: { back: string; site: s
 
   // session_id holds Modem Pay's intent id, success_indicator its intent_secret (used to verify; never sent to browsers).
   await one(
-    `insert into card_payments (order_id, booking_id, session_id, success_indicator, amount, currency)
-     values ($1, $2, $3, $4, $5, $6) returning order_id`,
-    [orderId, b.id, intentId, intent.intent_secret, total, b.currency],
+    `insert into card_payments (order_id, booking_id, pay_order, session_id, success_indicator, amount, currency)
+     values ($1, $2, $3, $4, $5, $6, $7) returning order_id`,
+    [orderId, p.bookingId, p.payOrder, intentId, intent.intent_secret, p.total, p.currency],
   );
-  await log("card", `${b.reference}: card checkout ${orderId} opened for ${b.currency} ${total}.`, { bookingId: b.id });
+  await log("card", `${p.reference}: card checkout ${orderId} opened for ${p.currency} ${p.total}.`, { bookingId: p.bookingId });
   return { orderId, url: intent.payment_link };
+}
+
+/** Card checkout for a booking made before pay-first (bookings still waiting from the older flow). */
+export async function startCardPayment(b: Booking, opts: { back: string; site: string }) {
+  if (b.status !== "pending") throw new HttpError(409, "This booking is not waiting for payment");
+  return openCheckout({ reference: b.reference, total: Number(b.total), currency: b.currency, email: b.email, back: opts.back, site: opts.site, bookingId: b.id, payOrder: null });
+}
+
+/** Card checkout for a pay-first order: the payer pays, comes back, and only then fills in the details. */
+export async function startOrderCard(o: Order, opts: { back: string; site: string }) {
+  if (o.status !== "open") throw new HttpError(409, o.status === "paid" ? "This payment has already gone through" : "This payment is not waiting for a card");
+  return openCheckout({ reference: o.reference, total: Number(o.total), currency: o.currency, back: opts.back, site: opts.site, bookingId: null, payOrder: o.id });
 }
 
 export type CardOutcome = "paid" | "declined" | "waiting";
 
 /**
- * Asks Modem Pay about one order and, if it was paid in full, records a receipt and confirms the booking.
+ * Asks Modem Pay about one card order and, if it was paid in full, records a receipt. A booking's payment confirms the
+ * booking; a pay-first order's payment marks the order paid, and the booking is confirmed when its details come in.
  * Safe to run any number of times: the receipt is unique per order and confirm_booking returns the same bibs.
  */
 export async function settleCardOrder(orderId: string): Promise<CardOutcome> {
-  const row = await one<{ order_id: string; booking_id: string; session_id: string | null; success_indicator: string; amount: string; currency: string; status: string }>(
-    "select order_id, booking_id, session_id, success_indicator, amount, currency, status from card_payments where order_id = $1",
+  const row = await one<{ order_id: string; booking_id: string | null; pay_order: string | null; session_id: string | null; success_indicator: string; amount: string; currency: string; status: string }>(
+    "select order_id, booking_id, pay_order, session_id, success_indicator, amount, currency, status from card_payments where order_id = $1",
     [orderId],
   );
   if (!row) return "waiting";
@@ -118,31 +134,35 @@ export async function settleCardOrder(orderId: string): Promise<CardOutcome> {
     return ["failed", "cancelled", "expired"].includes(status) ? "declined" : "waiting";
   }
 
-  const b = await one<{ id: string; reference: string; status: string; total: string; currency: string }>("select id, reference, status, total, currency from bookings where id = $1", [row.booking_id]);
+  const order = row.pay_order ? await one<{ id: string; reference: string; status: string; booking_id: string | null }>("select id, reference, status, booking_id from orders where id = $1", [row.pay_order]) : null;
+  const bookingId = row.booking_id ?? order?.booking_id ?? null;
+  const b = bookingId ? await one<{ id: string; reference: string; status: string; total: string; currency: string }>("select id, reference, status, total, currency from bookings where id = $1", [bookingId]) : null;
   const receipt = await one<{ id: string }>(
     `insert into receipts (method, amount, currency, reference_given, external_id, payer, note, auto, created_by)
      values ('card', $1, $2, $3, $4, 'Card (Modem Pay)', $5, true, 'modempay')
      on conflict (external_id) do nothing returning id`,
-    [amount, row.currency, b?.reference ?? null, `modem:${row.session_id ?? orderId}`, `Order ${orderId}`],
+    [amount, row.currency, b?.reference ?? order?.reference ?? null, `modem:${row.session_id ?? orderId}`, `Order ${orderId}`],
   );
   const receiptId = receipt?.id ?? (await one<{ id: string }>("select id from receipts where external_id = $1", [`modem:${row.session_id ?? orderId}`]))?.id ?? null;
   await q("update card_payments set status = 'paid', result = 'successful', receipt_id = $2, checked_at = now() where order_id = $1", [orderId, receiptId]);
 
+  if (order && !b) {
+    // Paid before the details: the order is ready for them. The booking is confirmed when it is created.
+    await q("update orders set status = 'paid', paid_at = now() where id = $1 and status = 'open'", [order.id]);
+    await log("card", `${order.reference}: card payment of ${row.currency} ${amount} received (${orderId}). Details to follow.`, { actor: "Card (Modem Pay)" });
+    return "paid";
+  }
   // Card money is taken on the spot, so a payment that lands just after the hold ran out still gets its place.
   if (b && (b.status === "pending" || b.status === "released") && b.currency === row.currency && amount + 0.005 >= Number(b.total)) {
     await confirmBooking(b.id, receiptId, "Card (Modem Pay)", true);
   } else if (receipt) {
-    await log("receipt", `Card payment ${orderId} of ${row.currency} ${amount} for ${b?.reference ?? "an unknown booking"} needs checking by hand.`);
+    await log("receipt", `Card payment ${orderId} of ${row.currency} ${amount} for ${b?.reference ?? order?.reference ?? "an unknown booking"} needs checking by hand.`);
   }
   return "paid";
 }
 
-/** Checks the booking's recent card orders, newest first. Used when the payer comes back from Modem Pay. */
-export async function settleBookingCards(bookingId: string): Promise<CardOutcome> {
-  const rows = await q<{ order_id: string }>(
-    "select order_id from card_payments where booking_id = $1 and created_at > now() - interval '7 days' order by created_at desc limit 3",
-    [bookingId],
-  );
+async function settleLatest(where: string, id: string): Promise<CardOutcome> {
+  const rows = await q<{ order_id: string }>(`select order_id from card_payments where ${where} = $1 and created_at > now() - interval '7 days' order by created_at desc limit 3`, [id]);
   let outcome: CardOutcome = "waiting";
   for (const r of rows) {
     const o = await settleCardOrder(r.order_id);
@@ -151,6 +171,12 @@ export async function settleBookingCards(bookingId: string): Promise<CardOutcome
   }
   return outcome;
 }
+
+/** Checks the booking's recent card orders, newest first. Used when the payer comes back from Modem Pay. */
+export const settleBookingCards = (bookingId: string) => settleLatest("booking_id", bookingId);
+
+/** The same for a pay-first order. */
+export const settleOrderCards = (payOrder: string) => settleLatest("pay_order", payOrder);
 
 /** The daily sweep: any open order from the last week the payer never came back from. */
 export async function settleOpenCards() {

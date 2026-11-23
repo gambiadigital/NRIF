@@ -1,20 +1,17 @@
 import "server-only";
-import { randomBytes, randomInt } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { q, one, log } from "./db";
 import { HttpError } from "./http";
 import { queueForBooking, sendSoon } from "./messages";
-import { cardTakes } from "./cardConfig";
+import { orderFor, PhoneIn } from "./orders";
 import { CURRENCIES } from "@/lib/data";
-import { raceDayAge, suggested } from "@/lib/format";
+import { raceDayAge } from "@/lib/format";
 import { WAIVER } from "@/lib/content";
 
 /* ---------- input ---------- */
 
-const Phone = z.object({
-  iso: z.string().length(2),
-  digits: z.string().regex(/^\d{6,12}$/, "Enter a full phone number"),
-});
+const Phone = PhoneIn;
 
 const ParticipantIn = z.object({
   fullName: z.string().trim().min(2, "Enter every participant's full name").max(80),
@@ -44,42 +41,57 @@ export const BookingIn = z.object({
   teamCode: z.string().trim().max(24).default(""),
   steps: z.boolean().default(false),
   consents: z.object({ waiver: z.literal(true, { message: "Accept the health disclaimer and waiver" }), guardian: z.boolean(), photos: z.boolean(), news: z.boolean() }),
+  // Pay first: every booking comes from an order whose payment is claimed or paid. Where the person lives, the
+  // currency, the entries, the donation and the payment all come from the order; the browser's copies are ignored.
+  order: z.object({ id: z.string().max(40), token: z.string().min(16).max(64) }, { message: "Pay first, then fill in your details" }),
   donation: z.number().min(0).max(1_000_000).default(0),
-  payMethod: z.enum(["wave", "yonna", "ecobank", "remit", "card"]),
+  payMethod: z.enum(["wave", "yonna", "ecobank", "remit", "card"]).optional(),
   source: z.string().max(40).default("direct"),
   referral: z.string().max(20).default(""),
 });
 export type BookingInput = z.infer<typeof BookingIn>;
 
-type EventRow = { id: string; name: string; kind: string; min_age: number; fee_gmd: number; suggested_gbp: number; open: boolean; start_time: string; distance: string };
+type EventRow = { id: string; name: string; kind: string; min_age: number; open: boolean };
 
-const ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
-const newReference = () => "RFI-" + Array.from({ length: 4 }, () => ALPHABET[randomInt(ALPHABET.length)]).join("");
 const isoDate = (dob: string) => {
   const [d, m, y] = dob.split("/");
   return `${y}-${m}-${d}`;
 };
 
+/** Bookings from the older pay-after flow are held this long; pay-first bookings are already paid for. */
 export const HOLD_DAYS = 5;
+/** Pay-first bookings have no hold to run out: they wait for staff to find the payment, up to the end of the event. */
+const NO_HOLD = "2027-02-03T00:00:00Z";
 
-/** Validates against the live events, prices on the server, and writes the booking and its people in one statement. */
+const sameEntries = (a: string[], b: string[]) => a.length === b.length && [...a].sort().join("|") === [...b].sort().join("|");
+
+/**
+ * Turns a paid (card) or claimed order into the booking: validates the people against the live events, writes the
+ * booking and its people in one statement with the order's reference, and links the two. A card order is confirmed
+ * on the spot, so the bibs come straight back; a claimed one waits for staff to find the payment.
+ */
 export async function createBooking(input: BookingInput) {
-  const events = await q<EventRow>("select id, name, kind, min_age, fee_gmd, suggested_gbp, open, start_time, distance from events");
-  const byId = new Map(events.map((e) => [e.id, e]));
+  const o = await orderFor(input.order.id, input.order.token);
+  if (!o) throw new HttpError(404, "We could not find your payment. Start again from the payment step.");
+  if (o.status === "used" && o.booking_id) {
+    // A second tap on Finish: hand back the booking that was already made.
+    const done = await one<{ reference: string; access_key: string; status: string }>("select reference, access_key, status from bookings where id = $1", [o.booking_id]);
+    if (done) return { reference: done.reference, key: done.access_key, total: Number(o.total), currency: o.currency, paid: done.status === "paid" };
+  }
+  if (o.status !== "claimed" && o.status !== "paid") throw new HttpError(409, o.status === "open" ? "Your card payment has not gone through yet" : "That payment can no longer be used");
 
-  if (input.residence === "abroad" && !input.city.trim()) throw new HttpError(400, "Tell us which city you live in");
-  if (input.residence === "gambia" && input.currency !== "GMD") throw new HttpError(400, "Entries from The Gambia are paid in dalasi");
-  if (input.residence === "gambia" && input.payMethod === "remit") throw new HttpError(400, "Choose Wave, Yonna, Ecobank or a card");
-  // People abroad give their city at step 1 and are not asked for a town again.
-  const town = input.residence === "abroad" ? input.city.split(",")[0]!.trim() : input.contact.town.trim();
+  const events = await q<EventRow>("select id, name, kind, min_age, open from events");
+  const byId = new Map(events.map((e) => [e.id, e]));
+  if (!sameEntries(input.participants.map((p) => p.eventId), o.events)) throw new HttpError(400, "These people do not match the entries you paid for. Go back and check each person's event.");
+
+  // People abroad gave their city when choosing their entries and are not asked for a town again.
+  const town = o.residence === "abroad" ? (o.city ?? "").split(",")[0]!.trim() : input.contact.town.trim();
   if (town.length < 2) throw new HttpError(400, "Enter your town or area");
-  if (input.payMethod === "card" && !cardTakes(input.currency)) throw new HttpError(400, "Card payments are not available for this booking. Choose another way to pay.");
 
   let minors = 0;
   const people = input.participants.map((p, i) => {
     const ev = byId.get(p.eventId);
-    if (!ev || !ev.open) throw new HttpError(400, `${p.fullName}: that event is not open`);
-    if (ev.kind === "virtual" && input.residence !== "abroad") throw new HttpError(400, `${p.fullName}: the ${ev.name} is for people who live abroad`);
+    if (!ev) throw new HttpError(400, `${p.fullName}: that event is not available`);
     const age = raceDayAge(p.dob);
     if (age === null) throw new HttpError(400, `${p.fullName}: check the date of birth`);
     if (i === 0 && age < 18) throw new HttpError(400, "The person booking must be 18 or over on race day");
@@ -89,7 +101,6 @@ export async function createBooking(input: BookingInput) {
       minors++;
       if (!p.guardianIsLead && (!p.guardian?.name.trim() || (p.guardian?.phone.digits ?? "").length < 6)) throw new HttpError(400, `${p.fullName}: add the guardian's name and phone`);
     }
-    const price = input.residence === "gambia" ? ev.fee_gmd : suggested(ev.suggested_gbp, input.currency as never);
     return {
       position: i,
       is_lead: i === 0,
@@ -103,7 +114,6 @@ export async function createBooking(input: BookingInput) {
       guardian_name: minor && !p.guardianIsLead ? p.guardian?.name.trim() ?? null : null,
       guardian_relation: minor && !p.guardianIsLead ? p.guardian?.relation ?? null : null,
       guardian_phone: minor && !p.guardianIsLead && p.guardian ? `${p.guardian.phone.iso}:${p.guardian.phone.digits}` : null,
-      price,
     };
   });
   if (minors > 0 && !input.consents.guardian) throw new HttpError(400, "As their guardian, accept the waiver for the under 18s");
@@ -115,67 +125,72 @@ export async function createBooking(input: BookingInput) {
     team = t.code;
   }
 
-  const total = people.reduce((a, p) => a + p.price, 0) + input.donation;
   const accessKey = randomBytes(18).toString("base64url");
-  const rows = JSON.stringify(people.map((p) => ({ ...p, price: undefined })));
+  const reference = o.reference;
+  const res = await q<{ booking_id: string }>(
+    `with b as (
+       insert into bookings (reference, access_key, residence, city, currency, phone_iso, phone, email, town,
+         emergency_name, emergency_relation, emergency_phone, team_code, steps, consent_waiver, consent_guardian,
+         consent_photos, consent_news, waiver_version, waiver_accepted_at, donation, total, pay_method, source, referral, hold_until,
+         payer_claimed_at, payer_from, payer_reference)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,true,$15,$16,$17,$18,now(),$19,$20,$21,$22,$23,$24,$26,$27,$28)
+       returning id
+     )
+     insert into participants (booking_id, position, is_lead, full_name, dob, gender, event_id, shirt, bib_name,
+       guardian_is_lead, guardian_name, guardian_relation, guardian_phone)
+     select b.id, x.position, x.is_lead, x.full_name, x.dob, x.gender, x.event_id, x.shirt, x.bib_name,
+            x.guardian_is_lead, x.guardian_name, x.guardian_relation, x.guardian_phone
+       from b, jsonb_to_recordset($25::jsonb) as x(position int, is_lead boolean, full_name text, dob date, gender text,
+            event_id text, shirt text, bib_name text, guardian_is_lead boolean, guardian_name text, guardian_relation text, guardian_phone text)
+     returning booking_id`,
+    [
+      reference,
+      accessKey,
+      o.residence,
+      o.residence === "abroad" ? o.city : null,
+      o.currency,
+      input.contact.phone.iso,
+      input.contact.phone.digits,
+      input.contact.email.trim().toLowerCase(),
+      town,
+      input.contact.emergency.name.trim(),
+      input.contact.emergency.relation || null,
+      `${input.contact.emergency.phone.iso}:${input.contact.emergency.phone.digits}`,
+      team,
+      false, // the steps challenge was withdrawn
+      minors > 0 ? input.consents.guardian : false,
+      input.consents.photos,
+      input.consents.news,
+      WAIVER.version,
+      Number(o.donation),
+      Number(o.total),
+      o.method,
+      input.source.replace(/[^a-z0-9_-]/gi, "").slice(0, 40) || "direct",
+      input.referral.replace(/[^A-Z0-9]/gi, "").slice(0, 20) || null,
+      NO_HOLD,
+      JSON.stringify(people),
+      o.status === "claimed" ? o.claimed_at : null,
+      o.payer_from,
+      o.payer_reference,
+    ],
+  );
+  const bookingId = res[0]!.booking_id;
+  await q("update orders set status = 'used', booking_id = $2 where id = $1", [o.id, bookingId]);
+  await q("update card_payments set booking_id = $2 where pay_order = $1 and booking_id is null", [o.id, bookingId]);
+  await log(
+    "booking",
+    `${reference} registered: ${people.length} ${people.length === 1 ? "entry" : "entries"}, ${o.currency} ${Number(o.total)} ${o.status === "paid" ? "paid by card" : `by ${o.method}, their reference ${o.payer_reference}`}.`,
+    { bookingId },
+  );
 
-  for (let attempt = 0; attempt < 6; attempt++) {
-    const reference = newReference();
-    try {
-      const res = await q<{ booking_id: string }>(
-        `with b as (
-           insert into bookings (reference, access_key, residence, city, currency, phone_iso, phone, email, town,
-             emergency_name, emergency_relation, emergency_phone, team_code, steps, consent_waiver, consent_guardian,
-             consent_photos, consent_news, waiver_version, waiver_accepted_at, donation, total, pay_method, source, referral, hold_until)
-           values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,true,$15,$16,$17,$18,now(),$19,$20,$21,$22,$23, now() + make_interval(days => $24))
-           returning id
-         )
-         insert into participants (booking_id, position, is_lead, full_name, dob, gender, event_id, shirt, bib_name,
-           guardian_is_lead, guardian_name, guardian_relation, guardian_phone)
-         select b.id, x.position, x.is_lead, x.full_name, x.dob, x.gender, x.event_id, x.shirt, x.bib_name,
-                x.guardian_is_lead, x.guardian_name, x.guardian_relation, x.guardian_phone
-           from b, jsonb_to_recordset($25::jsonb) as x(position int, is_lead boolean, full_name text, dob date, gender text,
-                event_id text, shirt text, bib_name text, guardian_is_lead boolean, guardian_name text, guardian_relation text, guardian_phone text)
-         returning booking_id`,
-        [
-          reference,
-          accessKey,
-          input.residence,
-          input.residence === "abroad" ? input.city.trim() : null,
-          input.currency,
-          input.contact.phone.iso,
-          input.contact.phone.digits,
-          input.contact.email.trim().toLowerCase(),
-          town,
-          input.contact.emergency.name.trim(),
-          input.contact.emergency.relation || null,
-          `${input.contact.emergency.phone.iso}:${input.contact.emergency.phone.digits}`,
-          team,
-          false, // the steps challenge was withdrawn
-          minors > 0 ? input.consents.guardian : false,
-          input.consents.photos,
-          input.consents.news,
-          WAIVER.version,
-          input.donation,
-          total,
-          input.payMethod,
-          input.source.replace(/[^a-z0-9_-]/gi, "").slice(0, 40) || "direct",
-          input.referral.replace(/[^A-Z0-9]/gi, "").slice(0, 20) || null,
-          HOLD_DAYS,
-          rows,
-        ],
-      );
-      const bookingId = res[0]!.booking_id;
-      await log("booking", `${reference} booked: ${people.length} ${people.length === 1 ? "entry" : "entries"}, ${input.payMethod}, ${input.currency} ${total}.`, { bookingId });
-      await queueForBooking(bookingId, "pending").catch((e) => console.error("queue pending", e));
-      sendSoon(bookingId);
-      return { reference, key: accessKey, total, currency: input.currency };
-    } catch (e) {
-      if (String((e as Error).message).includes("bookings_reference_key")) continue;
-      throw e;
-    }
+  if (o.status === "paid") {
+    const receipt = await one<{ receipt_id: string | null }>("select receipt_id from card_payments where pay_order = $1 and status = 'paid' order by checked_at desc nulls last limit 1", [o.id]);
+    await confirmBooking(bookingId, receipt?.receipt_id ?? null, "Card (Modem Pay)", true);
+    return { reference, key: accessKey, total: Number(o.total), currency: o.currency, paid: true };
   }
-  throw new HttpError(500, "Could not create a reference code. Please try again.");
+  await queueForBooking(bookingId, "received").catch((e) => console.error("queue received", e));
+  sendSoon(bookingId);
+  return { reference, key: accessKey, total: Number(o.total), currency: o.currency, paid: false };
 }
 
 /* ---------- reading ---------- */
@@ -209,6 +224,7 @@ export type BookingRow = {
   pay_method: string;
   payer_claimed_at: string | null;
   payer_from: string | null;
+  payer_reference: string | null;
   pay_token: string | null;
   source: string | null;
   referral: string | null;
@@ -282,6 +298,8 @@ export function publicBooking(b: BookingRow, people: ParticipantRow[], extra: Re
     claimedAt: b.payer_claimed_at,
     // Only the end of the number the payer said they paid from, enough for them to recognise it.
     payerFromTail: b.payer_from ? b.payer_from.slice(-4) : null,
+    // Pay first: the reference the payer gave for their payment. Set means "paid, NRIF is checking", not "please pay".
+    payerReference: b.payer_reference,
     createdAt: b.created_at,
     steps: b.steps,
     stepsCode: b.steps_code,

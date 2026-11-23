@@ -301,3 +301,35 @@ alter table admins add column if not exists hidden boolean not null default fals
 
 -- Who confirmed the payment: the staff member's account name, or the provider ("Card (Modem Pay)") for automatic ones.
 alter table bookings add column if not exists confirmed_by text;
+
+-- Pay first (NRIF, 2026-11-24): people choose their entries and pay before giving any names, so nobody is registered
+-- without a payment. An order is that payment: priced on the server, then either claimed with the payer's own
+-- transaction reference (Wave, Yonna, Ecobank, Remitly/ACE) or paid by card. Filling in the details turns it into a
+-- booking with the same reference. Staff never see an order until its payment is claimed or paid.
+create table if not exists orders (
+  id              uuid primary key default gen_random_uuid(),
+  reference       text not null unique,
+  token           text not null,
+  residence       text not null check (residence in ('gambia', 'abroad')),
+  city            text,
+  currency        text not null,
+  events          text[] not null,
+  donation        numeric(12,2) not null default 0,
+  total           numeric(12,2) not null,
+  method          text not null,
+  payer_reference text,
+  payer_from      text,
+  status          text not null default 'open' check (status in ('open', 'claimed', 'paid', 'used', 'cancelled')),
+  booking_id      uuid references bookings(id) on delete set null,
+  created_at      timestamptz not null default now(),
+  claimed_at      timestamptz,
+  paid_at         timestamptz
+);
+create index if not exists orders_status_idx on orders (status, created_at desc);
+
+-- The transaction reference the payer typed after paying (pay-first bookings), shown to staff when they confirm.
+alter table bookings add column if not exists payer_reference text;
+
+-- A card payment can now belong to an order that has no booking yet.
+alter table card_payments add column if not exists pay_order uuid references orders(id);
+alter table card_payments alter column booking_id drop not null;

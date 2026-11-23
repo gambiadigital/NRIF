@@ -2,10 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { House, GlobeHemisphereWest, MapPin, Sparkle, Check, Clock } from "@phosphor-icons/react";
+import { House, GlobeHemisphereWest, MapPin, Check, Clock, UsersThree, Minus, Plus, CheckCircle, ArrowRight } from "@phosphor-icons/react";
 import { CITIES, CURRENCIES, RUN, type RaceEvent } from "@/lib/data";
 import { useLiveEvents, useStats } from "@/lib/client";
-import { useBooking, entryPrice, fmt, lead } from "@/lib/store";
+import { useBooking, entryPrice, fmt, lead, total } from "@/lib/store";
 import { isoForCity } from "@/lib/format";
 import { Segmented, Field, Combobox, Badge, RadioDot } from "@/components/ui/fields";
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,12 @@ export default function ChooseEvent() {
       ...(c.emergency.phone.digits ? {} : { emergency: { ...c.emergency, phone: { ...c.emergency.phone, iso } } }),
     });
   }
+
+  // Paid already: the entries are fixed. They can only carry on to the details.
+  if (b.order) return <Paid />;
+
+  const othersFor = (id: string) => b.participants.slice(1).filter((p) => p.eventId === id).length;
+  const full = b.participants.length >= 10;
 
   return (
     <div>
@@ -115,19 +121,90 @@ export default function ChooseEvent() {
         </>
       )}
 
-      <SectionCard className="mt-8 border-dashed bg-transparent shadow-none">
-        <div className="flex items-start gap-3 text-sm text-muted">
-          <Sparkle weight="fill" className="mt-0.5 size-4 shrink-0 text-ember" />
-          <p>
-            Registering children or a team? Add them at step 3. One booking can hold the whole family, and under 18s can walk the Heritage Walk at any age with
-            you as their guardian.
-          </p>
-        </div>
+      <SectionCard className="mt-8" title="Anyone else coming?" icon={<UsersThree weight="bold" className="size-4" />} aside={<span className="text-xs text-muted">Optional</span>}>
+        <p className="-mt-2 mb-4 text-sm text-muted">
+          Family, friends or a team: one payment covers everyone, and you add their names after paying. Under 18s can walk the Heritage Walk at any age with you as their guardian.
+        </p>
+        <ul className="divide-y divide-line">
+          {(abroad ? [...virtual, ...inPerson] : inPerson).map((ev) => {
+            const n = othersFor(ev.id);
+            return (
+              <li key={ev.id} className="flex items-center gap-3 py-3">
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-semibold text-navy">{ev.name}</span>
+                  <span className="block text-xs text-muted">
+                    {ev.ageLabel} · {fmt(b, entryPrice(b, ev.id))} each
+                  </span>
+                </span>
+                <span className="flex items-center gap-1 rounded-full border border-line bg-paper p-1">
+                  <button
+                    onClick={() => b.setOthers(ev.id, n - 1)}
+                    disabled={n === 0}
+                    className="grid size-9 place-items-center rounded-full text-navy transition-colors hover:bg-white disabled:opacity-30"
+                    aria-label={`One fewer for the ${ev.name}`}
+                  >
+                    <Minus weight="bold" className="size-4" />
+                  </button>
+                  <span className="w-7 text-center font-bold text-navy tabular" aria-live="polite">
+                    {n}
+                  </span>
+                  <button
+                    onClick={() => b.setOthers(ev.id, n + 1)}
+                    disabled={full}
+                    className="grid size-9 place-items-center rounded-full text-navy transition-colors hover:bg-white disabled:opacity-30"
+                    aria-label={`One more for the ${ev.name}`}
+                  >
+                    <Plus weight="bold" className="size-4" />
+                  </button>
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+        {full && <p className="mt-2 text-xs text-muted">One booking holds up to 10 people. Make a second booking for more.</p>}
       </SectionCard>
 
       <StepFooter>
-        <Button size="lg" arrow onClick={() => router.push("/register/details")} disabled={abroad && !b.city.trim()}>
-          Continue
+        <Button size="lg" arrow onClick={() => router.push("/register/payment")} disabled={abroad && !b.city.trim()}>
+          Continue to payment
+        </Button>
+      </StepFooter>
+    </div>
+  );
+}
+
+/** Once the entries are paid for they are fixed: this step only shows them and moves on. */
+function Paid() {
+  const b = useBooking();
+  const router = useRouter();
+  const counts = new Map<RaceEvent["id"], number>();
+  for (const p of b.participants) counts.set(p.eventId, (counts.get(p.eventId) ?? 0) + 1);
+  const events = useLiveEvents();
+  return (
+    <div>
+      <StepTitle eyebrow={`${RUN.name} ${RUN.edition}`} title="Your entries are paid for" sub="To change them now, contact NRIF with your reference. Carry on to add everyone's names and details." />
+      <SectionCard>
+        <p className="flex items-center gap-2 font-semibold text-forest">
+          <CheckCircle weight="fill" className="size-5" /> {b.order!.status === "paid" ? "Paid by card" : "Payment sent"} · <span className="font-mono">{b.order!.reference}</span>
+        </p>
+        <ul className="mt-4 divide-y divide-line">
+          {[...counts].map(([id, n]) => (
+            <li key={id} className="flex items-center justify-between gap-4 py-3 text-[0.9375rem]">
+              <span className="text-navy">
+                {events.find((e) => e.id === id)?.name ?? id} <span className="text-muted">× {n}</span>
+              </span>
+              <span className="font-semibold text-navy tabular">{fmt(b, entryPrice(b, id) * n)}</span>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-2 flex items-baseline justify-between border-t border-line pt-4">
+          <span className="font-bold text-navy">Total paid</span>
+          <span className="font-bib text-[2rem] leading-none text-navy">{fmt(b, total(b))}</span>
+        </div>
+      </SectionCard>
+      <StepFooter>
+        <Button size="lg" icon={<ArrowRight weight="bold" className="size-5" />} onClick={() => router.push("/register/details")}>
+          Continue to your details
         </Button>
       </StepFooter>
     </div>

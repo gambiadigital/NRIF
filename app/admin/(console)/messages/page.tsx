@@ -26,7 +26,7 @@ function explain(message: string) {
 }
 
 // Sample values so the preview reads like a real email.
-const SAMPLE: Record<string, string> = { first: "Fatoumata", event: "5 km Run", bib: "4047", bibs: "4047, 7012, 7013", start: "07:30", link: "run4independence.nrif.gm/b/7Q4K-a8Kd2f3x", hold: "Sun 25 Jan, 23:59", amount: "GMD 300", ref: "RFI-7Q4K" };
+const SAMPLE: Record<string, string> = { first: "Fatoumata", event: "5 km Run", bib: "4047", bibs: "4047, 7012, 7013", start: "07:30", link: "run4independence.nrif.gm/b/7Q4K-a8Kd2f3x", hold: "Sun 25 Jan, 23:59", amount: "GMD 300", ref: "RFI-7Q4K", payref: "TX 8F3K2Q91", method: "Wave" };
 const STATUS = {
   queued: { l: "Waiting", tone: "neutral" as const, icon: HourglassMedium, c: "text-faint" },
   sent: { l: "Sent", tone: "forest" as const, icon: CheckCircle, c: "text-forest" },

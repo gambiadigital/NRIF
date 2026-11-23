@@ -39,6 +39,6 @@ export const POLICY = {
     { h: "Transfers", p: "You can give your place to someone else free of charge from My entry until Saturday 9 January 2027. They enter their own details and accept the waiver." },
     { h: "Changes", p: "You can move between distances until 9 January. If the new event costs more you pay the difference; if it costs less we keep the difference as a donation, unless you ask us not to." },
     { h: "Refunds", p: "Entry fees support the Endowment Fund and are not refunded if you cannot take part. If NRIF cancels the run, you choose between a full refund within 30 days or a place next year." },
-    { h: "Unpaid entries", p: "Entries paid by reference code are held for five days. We send a reminder on day three. If no payment arrives, the place is released and no money is owed." },
+    { h: "Paying first", p: "You pay before you register, and your entries are confirmed once NRIF finds the payment. If NRIF cannot find it, we contact you; if it never arrived, the registration is cancelled and no money is owed." },
   ],
 };

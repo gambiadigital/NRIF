@@ -1,28 +1,44 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useSyncExternalStore, type ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { X, Lock, Tag, Check } from "@phosphor-icons/react";
+import { X, Lock, Tag, Check, CreditCard, CheckCircle } from "@phosphor-icons/react";
 import { CoBrand } from "@/components/brand";
 import { useBooking, lineItems, total, fmt } from "@/lib/store";
 import { initials } from "@/lib/format";
 import { cn } from "@/lib/cn";
 
+/** Pay first: nobody gives names or details until the entries are paid for. */
 export const STEPS = [
-  { href: "/register", label: "Choose your event", short: "Event" },
+  { href: "/register", label: "Choose your entries", short: "Entries" },
+  { href: "/register/payment", label: "Payment", short: "Pay" },
   { href: "/register/details", label: "Your details", short: "Details" },
   { href: "/register/participants", label: "Who is running?", short: "People" },
-  { href: "/register/waiver", label: "Health and safety", short: "Waiver" },
-  { href: "/register/payment", label: "Payment", short: "Pay" },
+  { href: "/register/waiver", label: "Health and safety", short: "Finish" },
 ];
 
 const AVATAR = ["bg-forest text-white", "bg-royal text-white", "bg-cobalt text-white", "bg-ember text-white", "bg-navy text-white"];
 
+/** The steps that only open once the entries are paid for. */
+const AFTER_PAYMENT = ["/register/details", "/register/participants", "/register/waiver"];
+
+/** True once the saved form has been read back from this tab's storage. */
+function useHydrated() {
+  return useSyncExternalStore(
+    (cb) => useBooking.persist.onFinishHydration(cb),
+    () => useBooking.persist.hasHydrated(),
+    () => false,
+  );
+}
+
 export function RegisterShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const hydrated = useHydrated();
+  const order = useBooking((s) => s.order);
+  const payFirst = hydrated && !order && AFTER_PAYMENT.includes(pathname);
   const idx = STEPS.findIndex((s) => s.href === pathname);
   const inFlow = idx >= 0;
   const step = inFlow ? idx : STEPS.length;
@@ -82,7 +98,7 @@ export function RegisterShell({ children }: { children: ReactNode }) {
       <div className="mx-auto grid grid-cols-1 max-w-6xl gap-10 px-4 pb-40 pt-8 sm:px-6 sm:pt-12 lg:grid-cols-[minmax(0,1fr)_21rem] lg:pb-24">
         <AnimatePresence mode="wait" initial={false}>
           <motion.main key={pathname} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }} className="min-w-0">
-            {children}
+            {payFirst ? <PayFirst /> : children}
           </motion.main>
         </AnimatePresence>
         {inFlow && <Summary />}
@@ -100,6 +116,11 @@ function Summary() {
         <div className="overflow-hidden rounded-[1.5rem] border border-line bg-white shadow-card">
           <div className="flex items-center justify-between border-b border-line px-5 py-4">
             <p className="font-bold text-navy">Your booking</p>
+            {b.order && (
+              <span className="flex items-center gap-1 text-xs font-bold text-forest">
+                <CheckCircle weight="fill" className="size-4" /> Paid
+              </span>
+            )}
           </div>
           <ul className="divide-y divide-line">
             <AnimatePresence initial={false}>
@@ -146,6 +167,27 @@ function Summary() {
         )}
       </div>
     </aside>
+  );
+}
+
+/** Shown on the details steps when nothing has been paid yet: NRIF registers people only after payment. */
+function PayFirst() {
+  return (
+    <div className="rounded-[1.75rem] border border-line bg-white p-8 text-center shadow-card">
+      <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-cobalt-50 text-cobalt">
+        <CreditCard weight="duotone" className="size-7" />
+      </span>
+      <h1 className="mt-4 text-2xl font-bold text-navy">Pay for your entries first</h1>
+      <p className="mx-auto mt-2 max-w-md text-muted">Choose your entries and pay. Then you add everyone&apos;s names and details here.</p>
+      <div className="mt-6 flex flex-wrap justify-center gap-3">
+        <Link href="/register/payment" className="flex h-11 items-center rounded-full bg-forest px-5 font-semibold text-white hover:bg-forest-700">
+          Go to payment
+        </Link>
+        <Link href="/register" className="flex h-11 items-center rounded-full border border-line bg-white px-5 font-semibold text-navy hover:bg-paper">
+          Choose entries
+        </Link>
+      </div>
+    </div>
   );
 }
 

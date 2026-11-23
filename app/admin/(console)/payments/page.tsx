@@ -26,6 +26,8 @@ type Row = {
   hold_until: string;
   payer_claimed_at: string | null;
   payer_from: string | null;
+  /** Pay first: the transaction reference the payer gave. */
+  payer_reference: string | null;
   phone_tail: string;
   email: string;
   paid_at: string | null;
@@ -39,7 +41,9 @@ type Row = {
   events: string;
   bibs: string | null;
 };
-type Data = { bookings: Row[]; methods: { method: string; confirmed: number; waiting: number }[] };
+/** Pay first: money claimed or paid by someone who has not filled in their names yet. */
+type Unfinished = { id: string; reference: string; total: number; currency: string; method: string; payer_reference: string | null; payer_from: string | null; status: "claimed" | "paid"; claimed_at: string | null; paid_at: string | null; created_at: string; entries: number };
+type Data = { bookings: Row[]; methods: { method: string; confirmed: number; waiting: number }[]; unfinished: Unfinished[] };
 type Tab = "all" | "waiting" | "confirmed";
 
 const METHODS = [
@@ -108,7 +112,7 @@ export default function Payments() {
       (r) =>
         (tab === "all" || (tab === "waiting" ? r.status === "pending" : r.status === "paid")) &&
         (!t ||
-          `${r.reference} ${r.lead} ${r.events} ${r.email} ${r.confirmed_by ?? ""} ${r.bibs ?? ""}`.toLowerCase().includes(t) ||
+          `${r.reference} ${r.lead} ${r.events} ${r.email} ${r.confirmed_by ?? ""} ${r.bibs ?? ""} ${r.payer_reference ?? ""}`.toLowerCase().includes(t) ||
           (digits.length >= 3 && `${r.payer_from ?? ""} ${r.phone_tail}`.replace(/\D/g, "").includes(digits))),
     );
     // Waiting: the ones whose payer says the money is sent come first, since those are ready to look for.
@@ -209,6 +213,8 @@ export default function Payments() {
           </div>
         </div>
       </Toolbar>
+
+      {data && data.unfinished.length > 0 && tab !== "confirmed" && <UnfinishedList rows={data.unfinished.filter((u) => !only || u.method === only)} now={now} />}
 
       {!data ? (
         <div className="space-y-2">
@@ -393,9 +399,14 @@ function PaymentRow({ r, now, reminding, onConfirm, onRemind, onRelease, onOpen 
             <span className="block truncate text-sm text-muted">
               {r.events} · <span className="sm:hidden">{m.label} · </span>booked {when(r.created_at)}
             </span>
+            {r.status === "pending" && r.payer_reference && (
+              <span className="mt-1 block truncate text-[0.8125rem] font-semibold text-cobalt">
+                Payment ref <span className="font-mono">{r.payer_reference}</span>
+              </span>
+            )}
             {r.status === "pending" && r.payer_claimed_at && (
-              <span className="mt-1 block text-[0.8125rem] font-semibold text-cobalt">
-                Sent {ago(r.payer_claimed_at, now)}
+              <span className="mt-0.5 block text-[0.8125rem] font-semibold text-cobalt">
+                {r.payer_reference ? "Paid" : "Sent"} {ago(r.payer_claimed_at, now)}
                 {r.payer_from ? (
                   <>
                     {" "}from <span className="font-mono">{r.payer_from}</span>
@@ -420,6 +431,8 @@ function PaymentRow({ r, now, reminding, onConfirm, onRemind, onRelease, onOpen 
               </>
             ) : r.status === "released" ? (
               <>Released · can still be confirmed</>
+            ) : r.payer_reference ? (
+              <span className="font-semibold text-cobalt">Paid first · check and confirm</span>
             ) : r.expired ? (
               <span className="font-semibold text-ember">Hold ended {when(r.hold_until)}</span>
             ) : (
@@ -433,7 +446,7 @@ function PaymentRow({ r, now, reminding, onConfirm, onRemind, onRelease, onOpen 
           </p>
         </div>
 
-        <div className={cn("grid gap-2 @lg:flex @lg:shrink-0", r.status === "pending" ? "grid-cols-3" : r.status === "released" ? "grid-cols-2" : "grid-cols-1")}>
+        <div className={cn("grid gap-2 @lg:flex @lg:shrink-0", r.status === "pending" && !r.payer_reference ? "grid-cols-3" : r.status !== "paid" ? "grid-cols-2" : "grid-cols-1")}>
           {r.status !== "paid" && (
             <Button size="sm" icon={<Check weight="bold" className="size-4" />} onClick={onConfirm} className="h-10 w-full @lg:w-auto">
               Confirm
@@ -441,9 +454,12 @@ function PaymentRow({ r, now, reminding, onConfirm, onRemind, onRelease, onOpen 
           )}
           {r.status === "pending" && (
             <>
+              {/* Paid first: nothing to remind them about. */}
+              {!r.payer_reference && (
               <Button size="sm" variant="line" disabled={reminding} icon={reminding ? <CircleNotch weight="bold" className="size-4 animate-spin" /> : <BellRinging weight="bold" className="size-4" />} onClick={onRemind} className="h-10 w-full @lg:w-auto">
                 Remind
               </Button>
+              )}
               <Button size="sm" variant="line" icon={<ArrowCounterClockwise weight="bold" className="size-4" />} onClick={onRelease} className="h-10 w-full text-ember hover:border-ember/50 hover:bg-ember-50 @lg:w-auto">
                 Release
               </Button>
@@ -458,6 +474,52 @@ function PaymentRow({ r, now, reminding, onConfirm, onRemind, onRelease, onOpen 
         </div>
       </div>
     </li>
+  );
+}
+
+/** Money that came in (or is said to have) from someone who has not finished registering. Nothing to confirm yet. */
+function UnfinishedList({ rows, now }: { rows: Unfinished[]; now: number }) {
+  const [open, setOpen] = useState(false);
+  if (!rows.length) return null;
+  return (
+    <div className="mb-4 overflow-hidden rounded-[1.25rem] border border-cobalt/20 bg-cobalt-50/50">
+      <button onClick={() => setOpen((o) => !o)} className="flex w-full items-center gap-3 px-4 py-3.5 text-left sm:px-5">
+        <HourglassMedium weight="fill" className="size-5 shrink-0 text-cobalt" />
+        <span className="min-w-0 flex-1">
+          <span className="block font-semibold text-navy">
+            {rows.length} {rows.length === 1 ? "payment is" : "payments are"} waiting for names
+          </span>
+          <span className="block text-sm text-muted">They paid first but have not filled in their details yet. They appear below to confirm once they do.</span>
+        </span>
+        <span className="shrink-0 text-sm font-semibold text-cobalt">{open ? "Hide" : "Show"}</span>
+      </button>
+      {open && (
+        <ul className="divide-y divide-cobalt/10 border-t border-cobalt/15 bg-white">
+          {rows.map((u) => (
+            <li key={u.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 text-sm sm:px-5">
+              <span className="font-mono font-bold text-navy">{u.reference}</span>
+              <span className="font-semibold text-navy tabular">{amt(u.total, u.currency)}</span>
+              <span className="text-muted">
+                {method(u.method).label} · {u.entries} {u.entries === 1 ? "entry" : "entries"}
+              </span>
+              <span className="text-muted">
+                {u.status === "paid" ? "Paid by card" : (
+                  <>
+                    ref <span className="font-mono text-navy">{u.payer_reference}</span>
+                  </>
+                )}
+                {u.payer_from ? (
+                  <>
+                    {" "}· from <span className="font-mono text-navy">{u.payer_from}</span>
+                  </>
+                ) : null}
+              </span>
+              <span className="ml-auto text-xs text-faint">{ago(u.claimed_at ?? u.paid_at ?? u.created_at, now)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 
@@ -508,12 +570,12 @@ function ConfirmSheet({ row, me, onClose }: { row: Row | null; me: Me | null; on
       {r && m && (
         <>
           <div className="rounded-2xl bg-navy p-5 text-white">
-            <p className="font-label text-white/60">Reference on the payment</p>
+            <p className="font-label text-white/60">{r.payer_reference ? "Their payment reference" : "Reference on the payment"}</p>
             <div className="mt-1 flex items-center justify-between gap-3">
-              <p className="font-mono text-[2rem] font-bold leading-none tracking-wide">{r.reference}</p>
+              <p className={cn("min-w-0 break-all font-mono font-bold leading-none tracking-wide", r.payer_reference ? "text-[1.6rem]" : "text-[2rem]")}>{r.payer_reference ?? r.reference}</p>
               <button
                 onClick={() => {
-                  navigator.clipboard?.writeText(r.reference).catch(() => {});
+                  navigator.clipboard?.writeText(r.payer_reference ?? r.reference).catch(() => {});
                   toast.success("Reference copied");
                 }}
                 className="grid size-10 shrink-0 place-items-center rounded-full bg-white/10 hover:bg-white/20"
@@ -522,7 +584,18 @@ function ConfirmSheet({ row, me, onClose }: { row: Row | null; me: Me | null; on
                 <Copy weight="bold" className="size-4" />
               </button>
             </div>
-            {r.pay_method === "wave" && (
+            {r.payer_reference && (
+              <p className="mt-3 text-sm text-white/80">
+                They paid first, then gave this reference from their {m.label} receipt. Look for <b className="text-white">{amt(r.total, r.currency)}</b>
+                {r.payer_from ? (
+                  <>
+                    {" "}from <b className="font-mono text-white">{r.payer_from}</b>
+                  </>
+                ) : null}
+                . Booking <span className="font-mono">{r.reference}</span>.
+              </p>
+            )}
+            {r.pay_method === "wave" && !r.payer_reference && (
               <p className="mt-3 text-sm text-white/80">
                 Wave payments have no reference box. Look for <b className="text-white">{amt(r.total, r.currency)}</b> from{" "}
                 <b className="font-mono text-white">{r.payer_from ?? `the number ending ${r.phone_tail}`}</b>.
@@ -540,7 +613,7 @@ function ConfirmSheet({ row, me, onClose }: { row: Row | null; me: Me | null; on
             </Fact>
             <Fact k={r.people > 1 ? "Entries" : "Entry"}>{r.events}</Fact>
             <Fact k="Booked">{when(r.created_at)}</Fact>
-            <Fact k="Payer says sent">{r.payer_claimed_at ? when(r.payer_claimed_at) : "Not yet"}</Fact>
+            <Fact k={r.payer_reference ? "Paid and registered" : "Payer says sent"}>{r.payer_claimed_at ? when(r.payer_claimed_at) : "Not yet"}</Fact>
           </dl>
 
           {r.status === "released" && (

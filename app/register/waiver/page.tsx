@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { FileText, LockSimple, CaretRight, ArrowsLeftRight } from "@phosphor-icons/react";
-import { useBooking, minors } from "@/lib/store";
+import { FileText, LockSimple, CaretRight, ArrowsLeftRight, CircleNotch, WarningCircle } from "@phosphor-icons/react";
+import { useBooking, minors, saveBooking } from "@/lib/store";
+import { api } from "@/lib/client";
 import { WAIVER, POLICY } from "@/lib/content";
 import { Checkbox } from "@/components/ui/fields";
 import { Button } from "@/components/ui/button";
@@ -23,6 +25,51 @@ export default function Waiver() {
   const [tried, setTried] = useState(false);
   const [doc, setDoc] = useState<"waiver" | "policy" | null>(null);
   const ok = b.consents.waiver && (kids.length === 0 || b.consents.guardian);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  /** Pay first, so this is the end: the registration goes in with the paid order and the person sees where it stands. */
+  async function finish() {
+    setTried(true);
+    if (!ok) return;
+    const s = useBooking.getState();
+    if (!s.order) return router.push("/register/payment");
+    setBusy(true);
+    setError(null);
+    try {
+      const created = await api<{ reference: string; key: string; paid: boolean }>("/api/bookings", {
+        json: {
+          order: { id: s.order.id, token: s.order.token },
+          residence: s.residence,
+          city: s.city,
+          currency: s.currency,
+          participants: s.participants.map((p) => ({
+            fullName: p.fullName,
+            dob: p.dob,
+            gender: p.gender,
+            eventId: p.eventId,
+            guardianIsLead: p.guardianIsLead,
+            guardian: p.guardian,
+          })),
+          contact: s.contact,
+          teamCode: s.teamCode,
+          consents: { waiver: s.consents.waiver, guardian: s.consents.guardian, photos: s.consents.photos, news: s.consents.news },
+          donation: s.donation,
+          source: s.source,
+          referral: s.referral,
+        },
+      });
+      saveBooking(created);
+      s.reset();
+      const q = `ref=${created.reference}&k=${encodeURIComponent(created.key)}`;
+      router.push(created.paid ? `/confirmation?${q}` : `/register/pending?${q}`);
+    } catch (e) {
+      const msg = (e as Error).message;
+      setError(msg);
+      toast.error("We could not finish your registration", { description: msg });
+      setBusy(false);
+    }
+  }
 
   return (
     <div>
@@ -79,16 +126,16 @@ export default function Waiver() {
         )}
       </AnimatePresence>
 
+      {error && (
+        <p className="mt-4 flex items-start gap-2 rounded-2xl bg-ember-50 p-4 text-sm font-medium text-ember-600 ring-1 ring-ember/15">
+          <WarningCircle weight="fill" className="mt-0.5 size-4 shrink-0" />
+          {error}
+        </p>
+      )}
+
       <StepFooter back="/register/participants">
-        <Button
-          size="lg"
-          arrow
-          onClick={() => {
-            setTried(true);
-            if (ok) router.push("/register/payment");
-          }}
-        >
-          Continue to payment
+        <Button size="lg" arrow={!busy} icon={busy ? <CircleNotch weight="bold" className="size-5 animate-spin" /> : undefined} onClick={finish} disabled={busy}>
+          {busy ? "Finishing…" : "Finish registration"}
         </Button>
       </StepFooter>
 

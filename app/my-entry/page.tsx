@@ -260,10 +260,10 @@ function Dashboard({ b, reload }: { b: ClientBooking; reload: () => Promise<void
         <div className="mt-6 flex flex-col gap-4 rounded-[1.5rem] bg-cobalt-50 p-5 ring-1 ring-cobalt/15 sm:flex-row sm:items-center">
           <HourglassMedium weight="duotone" className="size-8 shrink-0 text-cobalt" />
           <div className="flex-1">
-            <p className="font-bold text-navy">{b.status === "pending" ? "Waiting for your payment" : "This place was released"}</p>
-            <p className="text-sm text-muted">{b.status === "pending" ? `Send ${amount} with reference ${b.reference} by ${formatHold(b.holdUntil)}. Bibs arrive once NRIF confirms it.` : "No payment arrived within the hold. Book again, or contact NRIF if you have paid."}</p>
+            <p className="font-bold text-navy">{b.status === "pending" ? (b.payerReference ? "NRIF is checking your payment" : "Waiting for your payment") : "This place was released"}</p>
+            <p className="text-sm text-muted">{b.status === "pending" ? (b.payerReference ? `You paid ${amount} (your payment reference ${b.payerReference}). Bibs arrive by email once NRIF confirms it.` : `Send ${amount} with reference ${b.reference} by ${formatHold(b.holdUntil)}. Bibs arrive once NRIF confirms it.`) : "No payment arrived within the hold. Book again, or contact NRIF if you have paid."}</p>
           </div>
-          {b.status === "pending" && (
+          {b.status === "pending" && !b.payerReference && (
             <Link href="/register/pending" className="flex h-11 shrink-0 items-center justify-center gap-2 rounded-full bg-navy px-5 font-semibold text-white">
               How to pay <ArrowRight weight="bold" className="size-4" />
             </Link>

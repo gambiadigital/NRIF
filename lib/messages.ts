@@ -4,6 +4,7 @@
  */
 
 export const SUBJECTS: Record<string, string> = {
+  received: "We're checking your payment: {ref}",
   pending: "Your place is held: reference {ref}",
   reminder3: "Reminder: your place is held until {hold}",
   confirm: "You're in! {event}, bib {bib}",

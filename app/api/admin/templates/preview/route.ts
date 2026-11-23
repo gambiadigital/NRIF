@@ -21,6 +21,8 @@ const SAMPLE_VARS: Record<string, string> = {
   hold: "Sun 25 Jan, 23:59",
   amount: "GMD 500",
   ref: "RFI-7Q4K",
+  payref: "TX 8F3K2Q91",
+  method: "Wave",
 };
 const PEOPLE: EmailPerson[] = [
   { name: "Fatoumata Jallow", bib: "4047", event: "5 km Run", kind: "in-person", start: "07:30" },

@@ -79,7 +79,7 @@ export default function Details() {
                   <WarningOctagon weight="fill" className="mt-0.5 size-5 shrink-0" />
                   <div>
                     <p className="font-bold">You will be {age} on race day, so a parent or guardian needs to book for you.</p>
-                    <p className="mt-1 text-ember-600/85">Ask them to start a booking and add you at step 3. They accept the waiver on your behalf.</p>
+                    <p className="mt-1 text-ember-600/85">Ask them to fill in this form as the person booking, with their own details, and add you on the next step. They accept the waiver on your behalf.</p>
                   </div>
                 </div>
               </motion.div>
@@ -87,7 +87,7 @@ export default function Details() {
           </AnimatePresence>
 
           <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="Phone" required htmlFor="phone" hint="We text your bib and reminders here" error={err("phone")}>
+            <Field label="Phone" required htmlFor="phone" hint="We use it only if we need to reach you" error={err("phone")}>
               <PhoneField id="phone" value={b.contact.phone} onChange={(v) => b.patchContact({ phone: v })} invalid={!!err("phone")} />
             </Field>
             <Field label="Email" required htmlFor="email" error={err("email")}>
@@ -125,7 +125,7 @@ export default function Details() {
         </SectionCard>
       </div>
 
-      <StepFooter back="/register">
+      <StepFooter back="/register/payment">
         <Button
           size="lg"
           arrow

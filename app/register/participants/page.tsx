@@ -47,7 +47,10 @@ export default function Participants() {
 
   return (
     <div>
-      <StepTitle title="Who is running?" sub="One booking holds the whole family, and one payment covers everyone." />
+      <StepTitle
+        title="Who is running?"
+        sub={b.participants.length === 1 ? "Your entry is paid for. Check your name and date of birth." : `You paid for ${b.participants.length} entries. Add a name and date of birth for each person.`}
+      />
 
       <ul className="space-y-3">
         <AnimatePresence initial={false}>
@@ -101,19 +104,21 @@ export default function Participants() {
         </AnimatePresence>
       </ul>
 
-      <Button
-        variant="outline"
-        size="lg"
-        block
-        className="mt-3 border-dashed"
-        icon={<UserPlus weight="bold" className="size-5" />}
-        onClick={() => {
-          setIsNew(true);
-          setEditing(newParticipant(b.residence === "abroad" ? "virtual" : "heritage"));
-        }}
-      >
-        Add another participant
-      </Button>
+      {!b.order && (
+        <Button
+          variant="outline"
+          size="lg"
+          block
+          className="mt-3 border-dashed"
+          icon={<UserPlus weight="bold" className="size-5" />}
+          onClick={() => {
+            setIsNew(true);
+            setEditing(newParticipant(b.residence === "abroad" ? "virtual" : "heritage"));
+          }}
+        >
+          Add another participant
+        </Button>
+      )}
 
       <div className="mt-8 space-y-4">
         <SectionCard title="Team code" icon={<UsersThree weight="bold" className="size-4" />} aside={<span className="text-xs text-muted">Optional</span>}>
@@ -161,6 +166,7 @@ export default function Participants() {
         key={editing?.id ?? "none"}
         value={editing}
         isNew={isNew}
+        locked={!!b.order}
         leadName={me.fullName}
         residence={b.residence}
         onClose={() => setEditing(null)}
@@ -181,6 +187,7 @@ export default function Participants() {
 function ParticipantEditor({
   value,
   isNew,
+  locked,
   leadName,
   residence,
   onClose,
@@ -189,6 +196,8 @@ function ParticipantEditor({
 }: {
   value: Participant | null;
   isNew: boolean;
+  /** The entries are paid for: the event cannot change and nobody can be removed. */
+  locked: boolean;
   leadName: string;
   residence: Residence;
   onClose: () => void;
@@ -219,7 +228,7 @@ function ParticipantEditor({
       description={isNew ? "They join your booking and your payment." : undefined}
       footer={
         <div className="flex items-center gap-3">
-          {!isNew && !p.isLead && (
+          {!isNew && !p.isLead && !locked && (
             <Button variant="ghost" className="text-ember hover:bg-ember-50" icon={<Trash weight="bold" className="size-4" />} onClick={() => onRemove(p.id)}>
               Remove
             </Button>
@@ -247,7 +256,16 @@ function ParticipantEditor({
         <Field label="Gender">
           <Select value={p.gender} onChange={(v) => set({ gender: v as "Female" | "Male" })} options={[{ value: "Female", label: "Female" }, { value: "Male", label: "Male" }]} />
         </Field>
-        <Field label="Event" required className="sm:col-span-2" error={tooYoung ? `${first} will be ${age} on race day. The ${ev.name} is for ${ev.ageLabel}.` : undefined}>
+        <Field
+          label="Event"
+          required
+          className="sm:col-span-2"
+          hint={locked ? "Paid for. To change it, contact NRIF with your reference." : undefined}
+          error={tooYoung ? `${first} will be ${age} on race day. The ${ev.name} is for ${ev.ageLabel}.${locked ? " Contact NRIF to change this entry." : ""}` : undefined}
+        >
+          {locked ? (
+            <p className="flex h-12 items-center rounded-xl border border-line bg-paper px-3.5 text-[0.9375rem] font-semibold text-navy">{ev.name}</p>
+          ) : (
           <Select
             value={p.eventId}
             onChange={(v) => set({ eventId: v as Participant["eventId"] })}
@@ -255,6 +273,7 @@ function ParticipantEditor({
             options={EVENTS.filter((e) => residence === "abroad" || e.kind === "in-person").map((e) => ({ value: e.id, label: e.name, hint: `${e.ageLabel} · ${e.blurb}` }))}
             invalid={tooYoung}
           />
+          )}
         </Field>
       </div>
 

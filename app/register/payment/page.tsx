@@ -1,91 +1,198 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
-import { HandHeart, Lightning, Hash, ShieldCheck, WarningCircle } from "@phosphor-icons/react";
-import { PAYMENT_METHODS, type PaymentMethodId } from "@/lib/data";
-import { useBooking, lineItems, total, fmt, DONATION_PRESETS, saveBooking } from "@/lib/store";
+import { HandHeart, ShieldCheck, WarningCircle, CreditCard, CircleNotch, CheckCircle, Copy, PaperPlaneTilt, ArrowRight, Receipt } from "@phosphor-icons/react";
+import { PAYMENT_METHODS, type Currency, type PaymentMethodId, type RaceEvent } from "@/lib/data";
+import { useBooking, lineItems, total, fmt, DONATION_PRESETS, newParticipant, type PaidOrder, type Phone } from "@/lib/store";
 import { api, cardFor, useSettings } from "@/lib/client";
-import { Badge, RadioDot, TextInput } from "@/components/ui/fields";
+import { Badge, Field, PhoneField, RadioDot, TextInput } from "@/components/ui/fields";
 import { Button } from "@/components/ui/button";
 import { StepFooter, StepTitle, SectionCard } from "@/components/register/Shell";
 import { PayMark } from "@/components/register/PayMethods";
+import { PayHow, PAYER_REF } from "@/components/register/PayHow";
 import { cn } from "@/lib/cn";
 
-export default function Payment() {
+/** What the server says about an order (see orderView in lib/server/orders.ts). */
+type OrderView = {
+  id: string;
+  reference: string;
+  residence: "gambia" | "abroad";
+  city: string;
+  currency: string;
+  events: string[];
+  donation: number;
+  total: number;
+  method: PaymentMethodId;
+  status: "open" | "claimed" | "paid" | "used" | "cancelled";
+  payerReference: string | null;
+  booking: { reference: string; key: string; status: string } | null;
+};
+
+export default function PaymentPage() {
+  return (
+    <Suspense fallback={null}>
+      <Payment />
+    </Suspense>
+  );
+}
+
+/*
+ * Step 2, pay first. The person pays NRIF for the entries chosen at step 1, then either gives the reference from their
+ * receipt (Wave, Yonna, Ecobank, Remitly/ACE) or pays by card on Modem Pay's page. Only then do the details steps open.
+ * A link with ?order=…&t=… brings a payer back here to carry on, and Modem Pay sends card payers back with &card=….
+ */
+function Payment() {
   const b = useBooking();
   const router = useRouter();
+  const sp = useSearchParams();
+  const settings = useSettings().data;
   const items = lineItems(b);
   const presets = DONATION_PRESETS[b.currency] ?? DONATION_PRESETS.GMD!;
   const [other, setOther] = useState(b.donation > 0 && !presets.includes(b.donation));
-  const settings = useSettings().data;
   const cardOk = cardFor(settings, b.currency);
-  const methods = (Object.keys(PAYMENT_METHODS) as PaymentMethodId[]).filter(
-    (k) => (b.residence === "gambia" ? PAYMENT_METHODS[k].home : PAYMENT_METHODS[k].abroad) && (k !== "card" || cardOk),
-  );
+  const methods = (Object.keys(PAYMENT_METHODS) as PaymentMethodId[]).filter((k) => (b.residence === "gambia" ? PAYMENT_METHODS[k].home : PAYMENT_METHODS[k].abroad) && (k !== "card" || cardOk));
   const method = methods.includes(b.payMethod) ? b.payMethod : methods[0]!;
-  const waveInstant = !!settings?.wave_checkout && b.currency === "GMD";
-  // Instant methods confirm the booking by themselves: card always, Wave once its Checkout API is connected.
-  const isInstant = (k: PaymentMethodId) => k === "card" || (k === "wave" && waveInstant);
-  const instant = isInstant(method);
   const sum = total(b);
+  const amount = fmt(b, sum);
+  const [payRef, setPayRef] = useState("");
+  const [from, setFrom] = useState<Phone>({ iso: b.contact.phone.iso || "GM", digits: "" });
+  const [tried, setTried] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [openCard, setOpenCard] = useState<{ id: string; token: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const handled = useRef(false);
 
-  async function pay() {
+  /** Makes the browser's booking match the order the server has, then moves on. */
+  function adopt(o: OrderView, token: string) {
+    if (o.booking) {
+      router.replace(o.booking.status === "paid" ? `/confirmation?ref=${o.booking.reference}&k=${encodeURIComponent(o.booking.key)}` : `/register/pending?ref=${o.booking.reference}&k=${encodeURIComponent(o.booking.key)}`);
+      return;
+    }
+    if (o.status !== "claimed" && o.status !== "paid") return false;
+    const s = useBooking.getState();
+    const mine = s.participants.map((p) => p.eventId).sort().join("|") === [...o.events].sort().join("|");
+    const order: PaidOrder = { id: o.id, token, reference: o.reference, status: o.status, method: o.method, total: o.total, payerReference: o.payerReference };
+    s.patch({
+      residence: o.residence,
+      city: o.city,
+      currency: o.currency as Currency,
+      donation: o.donation,
+      payMethod: o.method,
+      order,
+      // Same entries as this browser had: keep any names already typed. Otherwise rebuild them from the order.
+      participants: mine
+        ? s.participants
+        : o.events.map((ev, i) => (i === 0 ? { ...newParticipant(ev as RaceEvent["id"], true), id: "lead" } : newParticipant(ev as RaceEvent["id"]))),
+    });
+    return true;
+  }
+
+  // Back from Modem Pay, or a "finish later" link: what does the server say about this order?
+  useEffect(() => {
+    const id = sp.get("order");
+    const t = sp.get("t");
+    const card = sp.get("card");
+    if (!id || !t || handled.current) return;
+    handled.current = true;
+    window.history.replaceState(null, "", "/register/payment");
+    (async () => {
+      try {
+        if (card && card !== "cancelled") {
+          setChecking(true);
+          for (let i = 0; i < 6; i++) {
+            const r = await api<{ outcome: "paid" | "declined" | "waiting"; order: OrderView }>(`/api/orders/${id}/card/check?t=${encodeURIComponent(t)}`, { method: "POST" });
+            if (r.outcome === "paid") {
+              if (adopt(r.order, t)) {
+                toast.success("Payment received", { description: "Now add everyone's names and details." });
+                router.push("/register/details");
+              }
+              return;
+            }
+            if (r.outcome === "declined") {
+              setOpenCard({ id, token: t });
+              toast.error("Your card payment did not go through", { description: "Nothing was taken. Try again, or choose another way to pay." });
+              return;
+            }
+            await new Promise((res) => setTimeout(res, 4000));
+          }
+          setOpenCard({ id, token: t });
+          toast("We are waiting to hear from your bank", { description: "Check again in a minute. If the money was taken, it will show here." });
+          return;
+        }
+        const o = await api<OrderView>(`/api/orders/${id}?t=${encodeURIComponent(t)}`);
+        if (card === "cancelled") toast("Card payment cancelled", { description: "Nothing was taken. Pay by card again, or choose another way." });
+        if (o.status === "open") setOpenCard({ id, token: t });
+        else if (adopt(o, t)) router.push("/register/details");
+      } catch (e) {
+        toast.error((e as Error).message);
+      } finally {
+        setChecking(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sp]);
+
+  const entries = () => {
+    const s = useBooking.getState();
+    return { residence: s.residence, city: s.city, currency: s.currency, events: s.participants.map((p) => p.eventId), donation: s.donation };
+  };
+
+  async function payByCard() {
     setBusy(true);
     setError(null);
     try {
-      const s = useBooking.getState();
-      const created = await api<{ reference: string; key: string }>("/api/bookings", {
-        json: {
-          residence: s.residence,
-          city: s.city,
-          currency: s.currency,
-          participants: s.participants.map((p) => ({
-            fullName: p.fullName,
-            dob: p.dob,
-            gender: p.gender,
-            eventId: p.eventId,
-            shirt: p.shirt,
-            bibName: p.bibName,
-            guardianIsLead: p.guardianIsLead,
-            guardian: p.guardian,
-          })),
-          contact: s.contact,
-          teamCode: s.teamCode,
-          steps: s.steps,
-          consents: { waiver: s.consents.waiver, guardian: s.consents.guardian, photos: s.consents.photos, news: s.consents.news },
-          donation: s.donation,
-          payMethod: method,
-          source: s.source,
-          referral: s.referral,
-        },
-      });
-      saveBooking(created);
-      s.reset();
-      // For a card, the pending page opens Modem Pay's card page straight away; coming back lands there too.
-      router.push(`/register/pending?ref=${created.reference}&k=${encodeURIComponent(created.key)}${method === "card" ? "&pay=card" : ""}`);
+      const r = openCard
+        ? await api<{ url: string }>(`/api/orders/${openCard.id}/card?t=${encodeURIComponent(openCard.token)}`, { method: "POST" })
+        : await api<{ url: string }>("/api/orders", { json: { ...entries(), method: "card" } });
+      // The browser leaves for Modem Pay's page and comes back to this step.
+      window.location.href = r.url;
     } catch (e) {
-      const msg = (e as Error).message;
-      setError(msg);
-      toast.error("We could not save your booking", { description: msg });
+      setError((e as Error).message);
       setBusy(false);
     }
   }
 
+  const ref = method !== "card" ? PAYER_REF[method] : null;
+  const valid = !!ref && payRef.trim().length >= 3 && (ref.from !== "required" || from.digits.length >= 7);
+
+  async function claim() {
+    setTried(true);
+    if (!ref || !valid) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await api<{ order: OrderView; token: string }>("/api/orders", {
+        json: { ...entries(), method, payerReference: payRef.trim(), ...(ref.from && from.digits.length >= 7 ? { payerFrom: from } : {}) },
+      });
+      adopt(r.order, r.token);
+      toast.success("Thank you", { description: "Now add everyone's names and details. NRIF checks the payment and your bibs follow by email." });
+      router.push("/register/details");
+    } catch (e) {
+      const msg = (e as Error).message;
+      setError(msg);
+      toast.error("We could not take that", { description: msg });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Paid already: show it, and move on.
+  if (b.order) return <PaidAlready />;
+
   return (
     <div>
-      <StepTitle title={`Pay for ${items.length} ${items.length === 1 ? "entry" : "entries"}`} sub="One payment covers everyone in this booking." />
+      <StepTitle title={`Pay for ${items.length} ${items.length === 1 ? "entry" : "entries"}`} sub="Pay first, then add everyone's names and details. Your entries are booked once the payment is made." />
 
       <SectionCard>
         <ul className="space-y-2.5">
           {items.map((it) => (
             <li key={it.id} className="flex items-baseline justify-between gap-4 text-[0.9375rem]">
               <span className="text-navy">
-                {it.first} <span className="text-muted">· {it.event.name}</span>
+                {it.name} <span className="text-muted">· {it.event.name}</span>
               </span>
               <span className="font-semibold text-navy tabular">{fmt(b, it.amount)}</span>
             </li>
@@ -142,10 +249,10 @@ export default function Payment() {
         </div>
 
         <div className="mt-6 flex items-end justify-between border-t border-line pt-5">
-          <span className="text-lg font-bold text-navy">Total</span>
+          <span className="text-lg font-bold text-navy">To pay</span>
           <AnimatePresence mode="popLayout" initial={false}>
             <motion.span key={sum} initial={{ y: 14, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -14, opacity: 0 }} transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }} className="font-bib text-[2.6rem] leading-none text-navy">
-              {fmt(b, sum)}
+              {amount}
             </motion.span>
           </AnimatePresence>
         </div>
@@ -162,10 +269,14 @@ export default function Payment() {
               key={k}
               role="radio"
               aria-checked={on}
-              onClick={() => b.patch({ payMethod: k })}
+              disabled={!!openCard && k !== "card"}
+              onClick={() => {
+                b.patch({ payMethod: k });
+                setTried(false);
+              }}
               whileTap={{ scale: 0.99 }}
               className={cn(
-                "flex w-full items-center gap-4 rounded-[1.25rem] border-2 bg-white p-4 text-left transition-[border-color,box-shadow,background-color]",
+                "flex w-full items-center gap-4 rounded-[1.25rem] border-2 bg-white p-4 text-left transition-[border-color,box-shadow,background-color] disabled:opacity-50",
                 on ? "border-forest bg-forest-50/40 shadow-[0_10px_30px_-18px_rgb(19_95_64/0.7)]" : "border-transparent shadow-card hover:border-line-strong",
               )}
             >
@@ -174,18 +285,10 @@ export default function Payment() {
               <span className="min-w-0 flex-1">
                 <span className="block font-bold text-navy">{k === "ecobank" && b.residence === "abroad" ? "Ecobank, international transfer" : m.name}</span>
                 <span className="block text-sm text-muted">{m.note}</span>
-                <span className={cn("mt-1 flex items-center gap-1 text-xs font-bold sm:hidden", isInstant(k) ? "text-forest" : "text-cobalt")}>
-                  {isInstant(k) ? <Lightning weight="fill" className="size-3" /> : <Hash weight="bold" className="size-3" />}
-                  {isInstant(k) ? "Instant" : "Reference code"}
-                </span>
               </span>
-              {isInstant(k) ? (
-                <Badge tone="forest" className="hidden sm:inline-flex" icon={<Lightning weight="fill" className="size-3" />}>
-                  Instant
-                </Badge>
-              ) : (
-                <Badge tone="cobalt" className="hidden sm:inline-flex" icon={<Hash weight="bold" className="size-3" />}>
-                  Reference code
+              {k === "card" && (
+                <Badge tone="forest" className="hidden sm:inline-flex">
+                  Confirmed at once
                 </Badge>
               )}
             </motion.button>
@@ -193,14 +296,58 @@ export default function Payment() {
         })}
       </div>
 
-      <p className="mt-5 flex items-start gap-2 text-[0.8125rem] text-muted">
-        <ShieldCheck weight="fill" className="mt-0.5 size-4 shrink-0 text-forest" />
-        {method === "card"
-          ? "Next you enter your card on Modem Pay's secure page. NRIF never sees your card number, and your bib numbers arrive the moment the payment goes through."
-          : instant
-          ? "You approve the payment in the Wave app, and your bib numbers arrive the moment it lands."
-          : "Next you get a reference code to quote with your payment. Your place is held for 5 days while it reaches NRIF, and your bib numbers arrive by email once NRIF confirms it."}
-      </p>
+      <AnimatePresence mode="wait">
+        <motion.div key={method} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25 }}>
+          {method === "card" ? (
+            <SectionCard className="mt-6" title="Pay by card" icon={<CreditCard weight="bold" className="size-4" />}>
+              {checking ? (
+                <p role="status" className="flex items-center gap-3 rounded-2xl bg-navy px-5 py-4 text-[0.9375rem] text-white">
+                  <CircleNotch weight="bold" className="size-5 shrink-0 animate-spin" /> Checking your card payment with the bank…
+                </p>
+              ) : (
+                <ol className="space-y-3 text-[0.9375rem] text-navy">
+                  {[
+                    <>Tap <b>Pay {amount} by card</b>.</>,
+                    <>Enter your Visa or Mastercard, debit or credit, on Modem Pay&apos;s secure page.</>,
+                    <>You come straight back here to add everyone&apos;s names. Your bibs arrive as soon as you finish.</>,
+                  ].map((x, i) => (
+                    <li key={i} className="flex items-start gap-3">
+                      <span className="grid size-6 shrink-0 place-items-center rounded-full bg-cobalt text-xs font-bold text-white">{i + 1}</span>
+                      <span>{x}</span>
+                    </li>
+                  ))}
+                </ol>
+              )}
+              <p className="mt-4 flex items-start gap-2 text-[0.8125rem] text-muted">
+                <ShieldCheck weight="fill" className="mt-0.5 size-4 shrink-0 text-forest" />
+                Your card details go straight to Modem Pay, NRIF&apos;s payment provider. NRIF never sees them.
+              </p>
+            </SectionCard>
+          ) : (
+            <>
+              <SectionCard className="mt-6" title={`1. Pay ${amount}`} icon={<PayMark id={method} className="h-7 w-10 rounded-lg" />}>
+                <PayHow method={method} amount={amount} abroad={b.residence === "abroad"} settings={settings} />
+              </SectionCard>
+              <SectionCard className="mt-4" title="2. Tell us about the payment" icon={<Receipt weight="bold" className="size-4" />}>
+                <div className="grid grid-cols-1 gap-4">
+                  <Field label={ref!.label} htmlFor="payref" required hint={ref!.hint} error={tried && payRef.trim().length < 3 ? "Enter the reference from your receipt or message" : undefined}>
+                    <TextInput id="payref" value={payRef} onChange={(e) => setPayRef(e.target.value)} placeholder={ref!.placeholder} className="font-mono" autoComplete="off" maxLength={60} />
+                  </Field>
+                  {ref!.from && (
+                    <Field label={ref!.fromLabel} htmlFor="payfrom" required={ref!.from === "required"} optional={ref!.from === "optional"} error={tried && ref!.from === "required" && from.digits.length < 7 ? "Enter the number you paid from" : undefined}>
+                      <PhoneField id="payfrom" value={from} onChange={setFrom} />
+                    </Field>
+                  )}
+                </div>
+                <p className="mt-4 flex items-start gap-2 text-[0.8125rem] text-muted">
+                  <ShieldCheck weight="fill" className="mt-0.5 size-4 shrink-0 text-forest" />
+                  NRIF checks this against its account, then confirms your entries and emails your bib numbers, usually within a working day.
+                </p>
+              </SectionCard>
+            </>
+          )}
+        </motion.div>
+      </AnimatePresence>
 
       {error && (
         <p className="mt-4 flex items-start gap-2 rounded-2xl bg-ember-50 p-4 text-sm font-medium text-ember-600 ring-1 ring-ember/15">
@@ -209,9 +356,74 @@ export default function Payment() {
         </p>
       )}
 
-      <StepFooter back="/register/waiver">
-        <Button size="lg" arrow={!busy} onClick={pay} disabled={busy}>
-          {busy ? "Saving your booking…" : method === "card" ? `Pay ${fmt(b, sum)} by card` : instant ? `Pay ${fmt(b, sum)} with Wave` : "Get my reference"}
+      <StepFooter back="/register">
+        {method === "card" ? (
+          <Button size="lg" variant="ink" icon={busy ? <CircleNotch weight="bold" className="size-5 animate-spin" /> : <CreditCard weight="bold" className="size-5" />} onClick={payByCard} disabled={busy || checking || !cardOk}>
+            {busy ? "Opening the card page…" : openCard ? `Try the card again` : `Pay ${amount} by card`}
+          </Button>
+        ) : (
+          <Button size="lg" icon={busy ? <CircleNotch weight="bold" className="size-5 animate-spin" /> : <PaperPlaneTilt weight="fill" className="size-5" />} onClick={claim} disabled={busy}>
+            {busy ? "Saving…" : "I have paid, continue"}
+          </Button>
+        )}
+      </StepFooter>
+    </div>
+  );
+}
+
+/** The entries are paid for (or the payment is claimed): show it, give a way back, and carry on to the details. */
+function PaidAlready() {
+  const b = useBooking();
+  const router = useRouter();
+  const o = b.order!;
+  const [copied, setCopied] = useState(false);
+  const link = typeof window === "undefined" ? "" : `${window.location.origin}/register/payment?order=${o.id}&t=${encodeURIComponent(o.token)}`;
+  return (
+    <div>
+      <StepTitle title={o.status === "paid" ? "Payment received" : "Thank you for paying"} sub="Now add everyone's names and details to finish your registration." />
+      <SectionCard>
+        <div className="flex items-start gap-4">
+          <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-forest-50 text-forest">
+            <CheckCircle weight="fill" className="size-7" />
+          </span>
+          <div className="min-w-0">
+            <p className="font-bold text-navy">
+              {fmt(b, o.total)} {o.status === "paid" ? "paid by card" : `by ${PAYMENT_METHODS[o.method].name}`}
+            </p>
+            <p className="text-sm text-muted">
+              Your booking reference <b className="font-mono text-navy">{o.reference}</b>
+              {o.payerReference ? (
+                <>
+                  {" "}
+                  · your payment reference <b className="font-mono text-navy">{o.payerReference}</b>
+                </>
+              ) : null}
+            </p>
+          </div>
+        </div>
+        <div className="mt-5 rounded-2xl bg-paper p-4">
+          <p className="text-sm font-semibold text-navy">Need to stop and finish later?</p>
+          <p className="mt-1 text-sm text-muted">Keep this link. It brings you back here with your payment.</p>
+          <div className="mt-3 flex items-center gap-2 rounded-xl border border-line bg-white p-1.5 pl-3">
+            <span className="min-w-0 flex-1 truncate font-mono text-xs text-navy">{link.replace(/^https?:\/\//, "")}</span>
+            <button
+              onClick={() => {
+                navigator.clipboard?.writeText(link).catch(() => {});
+                setCopied(true);
+                toast.success("Link copied");
+                setTimeout(() => setCopied(false), 1800);
+              }}
+              className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-navy px-3 text-xs font-semibold text-white"
+            >
+              {copied ? <CheckCircle weight="fill" className="size-4" /> : <Copy weight="bold" className="size-4" />}
+              {copied ? "Copied" : "Copy"}
+            </button>
+          </div>
+        </div>
+      </SectionCard>
+      <StepFooter back="/register">
+        <Button size="lg" icon={<ArrowRight weight="bold" className="size-5" />} onClick={() => router.push("/register/details")}>
+          Add names and details
         </Button>
       </StepFooter>
     </div>

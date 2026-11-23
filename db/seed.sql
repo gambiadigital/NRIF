@@ -17,6 +17,8 @@ insert into templates (id, name, channel, when_label, body) values
    E'Thank you for signing up for Run for Independence, {first}. Your place is held until {hold}.
 
 To confirm it, pay {amount} and quote your reference {ref} with the payment. Your bib number arrives by email as soon as NRIF confirms it.'),
+  ('received', 'Registration received', 'email', 'When someone registers after paying',
+   E'Thank you, {first}! We have your registration and your payment of {amount}.\n\nNRIF is checking the payment now (your payment reference {payref}). Your bib number arrives by email as soon as it is confirmed, usually within a working day.'),
   ('confirm', 'Confirmation', 'email', 'When a payment is confirmed',
    E'Your payment is confirmed and your place is yours, {first}. Thank you for running for research and innovation in The Gambia.
 
